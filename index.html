@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistik-Rechner Sammlung</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f7f9;
+            color: #333;
+            line-height: 1.6;
+        }
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            border-bottom: 5px solid #27ae60;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.8em;
+            font-weight: 300;
+        }
+        .header p {
+            font-size: 1.1em;
+            margin-top: 10px;
+            color: #ecf0f1;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        .calculators-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+        .calculator-card {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .calculator-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+        .calculator-card h2 {
+            font-size: 1.5em;
+            color: #2980b9;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        .calculator-card p {
+            font-size: 0.95em;
+            color: #555;
+            flex-grow: 1; /* Ensures description takes available space */
+            margin-bottom: 20px;
+        }
+        .calculator-card a.button {
+            display: inline-block;
+            background-color: #27ae60;
+            color: white;
+            padding: 12px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .calculator-card a.button:hover {
+            background-color: #229954;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: #7f8c8d;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 { font-size: 2.2em; }
+        }
+         @media (max-width: 480px) {
+            .header h1 { font-size: 1.8em; }
+            .calculator-card h2 { font-size: 1.3em; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <h1>Sammlung Statistischer Rechner</h1>
+        <p>Eine Übersicht über verschiedene Werkzeuge zur Datenanalyse und Visualisierung.</p>
+    </header>
+
+    <div class="container">
+        <div class="calculators-grid">
+            
+            <div class="calculator-card">
+                <h2>Boxplot Rechner (Basis)</h2>
+                <p>Berechnet statistische Kennwerte für einen Boxplot (Min, Max, Q1, Median, Q3) aus einer einfachen Zahlenreihe und stellt diese dar.</p>
+                <a href="./calcs/boxplot.html" class="button">Öffnen</a>
+            </div>
+
+            <div class="calculator-card">
+                <h2>Diagramm-Generator (Rohdaten)</h2>
+                <p>Erstellt Boxplot, Kreis-, Säulen- und Balkendiagramme sowie statistische Kennwerte aus einer einfachen Zahlenreihe.</p>
+                <a href="./calcs/diagramme.html" class="button">Öffnen</a>
+            </div>
+
+            <div class="calculator-card">
+                <h2>Analyse gruppierter Daten</h2>
+                <p>Berechnet Statistiken und erstellt Diagramme (Boxplot, Kreis, Säule, Balken) für bereits gruppierte Daten mit Klassen und Häufigkeiten. Zeigt auch Klassenmitten und einen horizontalen Boxplot.</p>
+                <a href="./calcs/gruppierteDaten.html" class="button">Öffnen</a>
+            </div>
+
+            <div class="calculator-card">
+                <h2>Statistische Kennzahlen (Basis)</h2>
+                <p>Berechnet Mittelwert, Median, Standardabweichung und Spanne aus einer einfachen Zahlenreihe, inklusive Formeldarstellung.</p>
+                <a href="./calcs/kennzahlen.html" class="button">Öffnen</a>
+            </div>
+
+            <div class="calculator-card">
+                <h2>Statistische Kennzahlen (Erweitert)</h2>
+                <p>Erweiterter Rechner für Mittelwert, Median, Quartile, IQR, Standardabweichung und Spanne mit Formeln.</p>
+                <a href="./calcs/kennzahlenerw.html" class="button">Öffnen</a>
+            </div>
+            
+            <div class="calculator-card">
+                <h2>Rohdaten-Analyse mit Automatischer Gruppierung</h2>
+                <p>Analysiert Rohdaten, berechnet Kennzahlen, gruppiert die Daten automatisch in Klassen (basierend auf Nutzerangaben) und erstellt ein Histogramm.</p>
+                <a href="./calcs/datenGruppieren.html" class="button">Öffnen</a>
+            </div>
+
+            <div class="calculator-card">
+                <h2>Kennzahlen für Häufigkeitsverteilungen</h2>
+                <p>Berechnet Mittelwert, Varianz, Standardabweichung etc. für Daten, die als Werte mit zugehörigen Häufigkeiten eingegeben werden (z.B. Notenverteilung). Mit Bruchrechnung und Formeln ohne Summenzeichen.</p>
+                <a href="./calcs/statischeKennzahlen.html" class="button">Öffnen</a>
+            </div>
+
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2024-2025 Statistik-Toolsammlung</p>
+    </footer>
+
+</body>
+</html>

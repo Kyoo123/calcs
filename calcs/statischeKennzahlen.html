@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistische Kennzahlen (Häufigkeitsverteilung)</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/fraction.js@4.2.0/fraction.min.js"></script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 20px; background-color: #f8f9fa; color: #212529; line-height: 1.6;
+        }
+        .container {
+            background-color: #fff; padding: 25px; border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); max-width: 800px; margin: auto;
+        }
+        h1 { color: #343a40; text-align: center; font-size: 1.8em; margin-bottom: 1.2em; }
+        h2 { color: #0056b3; font-size: 1.4em; margin-top: 25px; margin-bottom:15px; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;}
+
+        .input-rows-container .input-row {
+            display: flex; align-items: center; margin-bottom: 10px;
+            padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px;
+        }
+        .input-rows-container label { margin-right: 5px; font-size: 0.9em; white-space: nowrap; }
+        .input-rows-container input { 
+            padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 0.9em; 
+        }
+        .input-rows-container .value-input { width: 100px; margin-right: 10px; }
+        .input-rows-container .freq-input { width: 70px; margin-right: 10px; }
+        .delete-row-btn {
+            background: none; border: none; color: #dc3545; font-size: 1.3em;
+            cursor: pointer; padding: 0 5px; line-height: 1;
+        }
+        .action-buttons-container { margin-top: 15px; display: flex; gap: 10px; }
+        .action-buttons-container button {
+            padding: 10px 15px; font-size: 1em; border-radius: 5px; cursor: pointer;
+            border: none; color: white; flex-grow: 1;
+        }
+        #addRowBtn { background-color: #5cb85c; }
+        #addRowBtn:hover { background-color: #4cae4c; }
+        #calculateBtn { background-color: #007bff; }
+        #calculateBtn:hover { background-color: #0056b3; }
+
+        .results-container { margin-top: 30px; }
+        .kennzahl {
+            background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 15px;
+            margin-bottom: 15px; border-radius: 5px;
+        }
+        .kennzahl h3 {
+            font-size: 1.3em; color: #0056b3; margin-top: 0; margin-bottom: 12px;
+            border-bottom: 1px solid #007bff; padding-bottom: 8px;
+        }
+        .kennzahl p.value { margin: 8px 0 12px 0; font-size: 1em; color: #343a40; display:flex; align-items:center; gap: 5px;}
+        .kennzahl .value .latex-fraction { font-weight: bold; color: #28a745; font-size: 1.05em; }
+        .kennzahl .value .decimal-approx { font-size: 1em; color: #5a6268;}
+        .formula {
+            margin-top: 10px; padding: 10px; background-color: #e9ecef;
+            border-radius: 4px; font-size: 0.9em;
+        }
+        .formula p, .formula ul, .formula ol { margin-bottom: 8px; font-size:0.95em; }
+        .formula .explanation { font-style: italic; color: #6c757d; font-size:0.9em; }
+        .formula ul, .formula ol { padding-left: 18px; }
+        .error {
+            color: #dc3545; background-color: #f8d7da; border: 1px solid #f5c6cb;
+            padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 0.95em;
+        }
+        .katex { font-size: 1.05em; }
+        .latex-fraction .katex { font-size: 1.1em !important; }
+        #sortedDataDisplay { word-break: break-all; background-color: #e9ecef; padding: 8px; border-radius: 4px; font-size: 0.9em;}
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Statistische Kennzahlen (für Häufigkeitsverteilungen)</h1>
+
+        <h2>Dateneingabe (Wert und Häufigkeit)</h2>
+        <div id="inputRowsContainer" class="input-rows-container">
+            </div>
+        <div class="action-buttons-container">
+            <button id="addRowBtn" type="button">Zeile hinzufügen (+)</button>
+            <button id="calculateBtn" type="button">Berechnen</button>
+        </div>
+        <div id="errorDisplay" class="error" style="display:none;"></div>
+
+        <div id="resultsContainer" class="results-container" style="display:none;">
+            <h2>Berechnete Kennzahlen</h2>
+            <div class="kennzahl">
+                <h3>Mittelwert ($\mu$)</h3>
+                <p class="value"><span class="latex-fraction" id="meanValueLatex"></span><span class="decimal-approx" id="meanValueDecimal"></span></p>
+                <div class="formula">
+                    <p>Formel:</p>
+                    $$ \mu = \frac{x_1 \cdot f_1 + x_2 \cdot f_2 + \ldots + x_k \cdot f_k}{f_1 + f_2 + \ldots + f_k} = \frac{\sum (x_i \cdot f_i)}{\sum f_i} $$
+                    <p class="explanation">$x_i$: Wert der i-ten Gruppe, $f_i$: Häufigkeit der i-ten Gruppe, $k$: Anzahl der Gruppen.</p>
+                </div>
+            </div>
+
+            <div class="kennzahl">
+                <h3>Median (Zentralwert)</h3>
+                <p class="value">Wert: <span class="decimal-approx" id="medianValue"></span></p>
+                <div class="formula">
+                    <p>Vorgehen:</p>
+                    <ol>
+                        <li>Erstelle eine Liste, in der jeder Wert $x_i$ so oft vorkommt, wie seine Häufigkeit $f_i$ angibt.</li>
+                        <li>Sortiere diese Liste aufsteigend: $d_{(1)}, d_{(2)}, \ldots, d_{(N)}$, wobei $N = \sum f_i$.</li>
+                        <li>Wenn $N$ ungerade: Median $= d_{\left(\frac{N+1}{2}\right)}$.</li>
+                        <li>Wenn $N$ gerade: Median $= \frac{d_{\left(\frac{N}{2}\right)} + d_{\left(\frac{N}{2}+1\right)}}{2}$.</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div class="kennzahl">
+                <h3>Quartile</h3>
+                <p class="value">1. Quartil (Q1): <span class="decimal-approx" id="q1Value"></span></p>
+                <p class="value">3. Quartil (Q3): <span class="decimal-approx" id="q3Value"></span></p>
+                 <div class="formula">
+                    <p>Berechnung über die sortierte, ausmultiplizierte Datenliste (Länge $N=\sum f_i$) mittels Interpolation:</p>
+                    <ul>
+                        <li>Position Q1: $P_{Q1} = 0.25 \cdot (N-1)$ (0-basierter Index)</li>
+                        <li>Position Q3: $P_{Q3} = 0.75 \cdot (N-1)$ (0-basierter Index)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="kennzahl">
+                <h3>Interquartilsabstand (IQR)</h3>
+                <p class="value">Wert: <span class="decimal-approx" id="iqrValue"></span></p>
+                <div class="formula">
+                    <p>Formel:</p>
+                    $$ IQR = Q_3 - Q_1 $$
+                </div>
+            </div>
+
+            <div class="kennzahl">
+                <h3>Varianz ($\sigma^2$)</h3>
+                <p class="value">Mit Verschiebungssatz: <span class="latex-fraction" id="varianceValueLatex"></span><span class="decimal-approx" id="varianceValueDecimal"></span></p>
+                <div class="formula">
+                    <p>Formel (Verschiebungssatz):</p>
+                    $$ \sigma^2 = \frac{x_1^2 f_1 + x_2^2 f_2 + \ldots + x_k^2 f_k}{\sum f_i} - \mu^2 $$
+                    <p class="explanation">(Berechnet als Populationsvarianz)</p>
+                </div>
+            </div>
+
+            <div class="kennzahl">
+                <h3>Standardabweichung ($\sigma$)</h3>
+                 <p class="value">Wert: <span class="decimal-approx" id="stdDevValue"></span></p>
+                <div class="formula">
+                    <p>Formel:</p>
+                    $$ \sigma = \sqrt{\sigma^2} $$
+                    <p class="explanation">(Populationsstandardabweichung)</p>
+                </div>
+            </div>
+
+            <div class="kennzahl">
+                <h3>Spanne (Variationsbreite)</h3>
+                <p class="value">Wert: <span class="decimal-approx" id="rangeValue"></span></p>
+                <div class="formula">
+                    <p>Formel:</p>
+                    $$ \text{Spanne} = x_{\text{max}} - x_{\text{min}} $$
+                    <p class="explanation">$x_{\text{max}}$ und $x_{\text{min}}$ sind der größte und kleinste beobachtete Wert $x_i$ mit $f_i > 0$.</p>
+                </div>
+            </div>
+            <div class="kennzahl">
+                <h3>Ausmultiplizierte & Sortierte Daten (für Median/Quartile)</h3>
+                <p>Anzahl der Gesamtdatenpunkte (N): <span id="totalN"></span></p>
+                <div id="sortedDataDisplay"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const inputRowsContainer = document.getElementById('inputRowsContainer');
+        const addRowBtn = document.getElementById('addRowBtn');
+        const calculateBtn = document.getElementById('calculateBtn');
+        const errorDisplay = document.getElementById('errorDisplay');
+        const resultsContainer = document.getElementById('resultsContainer');
+        let rowIdCounter = 0;
+
+        function addInputRow() {
+            rowIdCounter++;
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'input-row';
+            rowDiv.id = `input-row-${rowIdCounter}`;
+            rowDiv.innerHTML = `
+                <label for="val-${rowIdCounter}">Wert ${rowIdCounter} (xᵢ):</label>
+                <input type="text" id="val-${rowIdCounter}" class="value-input" placeholder="z.B. Note">
+                <label for="freq-${rowIdCounter}">Häufigkeit ${rowIdCounter} (fᵢ):</label>
+                <input type="number" id="freq-${rowIdCounter}" class="freq-input" min="0" placeholder="Anzahl">
+                <button type="button" class="delete-row-btn" onclick="deleteInputRow('input-row-${rowIdCounter}')" title="Zeile entfernen">🗑️</button>
+            `;
+            inputRowsContainer.appendChild(rowDiv);
+        }
+
+        function deleteInputRow(rowId) {
+            const row = document.getElementById(rowId);
+            if (row) row.remove();
+        }
+
+        for(let i=0; i<4; i++) addInputRow(); // Start mit 4 Zeilen
+        addRowBtn.addEventListener('click', addInputRow);
+        calculateBtn.addEventListener('click', calculateAllKennzahlen);
+
+        function renderAllMath() {
+            if (window.renderMathInElement) {
+                renderMathInElement(document.body, {
+                     delimiters: [ {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true} ]
+                });
+            }
+        }
+        document.addEventListener("DOMContentLoaded", function() {
+             if (typeof Fraction !== 'function') {
+                console.error("Fraction.js NICHT geladen!");
+                errorDisplay.textContent = "Fehler: Wichtige Bruchrechnungs-Bibliothek fehlt!";
+                errorDisplay.style.display = 'block';
+            }
+            renderAllMath();
+        });
+        
+        function formatFractionToLatex(frac) {
+            if (!frac || typeof frac.n === 'undefined') return "N/A";
+            if (frac.d === 1) return frac.n.toString();
+            return (frac.s === -1 ? "-" : "") + `\\frac{${Math.abs(frac.n)}}{${Math.abs(frac.d)}}`;
+        }
+
+        function getPercentile(sortedArr, p) {
+            if (!sortedArr || sortedArr.length === 0) return NaN;
+            if (sortedArr.length === 1) return sortedArr[0];
+            const index = p * (sortedArr.length - 1);
+            const lower = Math.floor(index);
+            const upper = Math.ceil(index);
+            const weight = index - lower;
+            if (lower === upper) return sortedArr[lower];
+            return sortedArr[lower] * (1 - weight) + sortedArr[upper] * weight;
+        }
+
+        function calculateAllKennzahlen() {
+            errorDisplay.textContent = '';
+            errorDisplay.style.display = 'none';
+            resultsContainer.style.display = 'none';
+
+            if (typeof Fraction !== 'function') {
+                 errorDisplay.textContent = "Fehler: Bruchrechnungs-Bibliothek ist nicht verfügbar.";
+                 errorDisplay.style.display = 'block'; return;
+            }
+
+            const groups = [];
+            const inputRows = inputRowsContainer.getElementsByClassName('input-row');
+            let totalN = 0;
+            let minX = Infinity, maxX = -Infinity;
+
+            for (let i = 0; i < inputRows.length; i++) {
+                const valueStr = inputRows[i].querySelector('.value-input').value.trim();
+                const freqStr = inputRows[i].querySelector('.freq-input').value.trim();
+
+                if (!valueStr && !freqStr) continue;
+                if (!valueStr || !freqStr) {
+                    errorDisplay.textContent = `Zeile ${i+1}: Wert und Häufigkeit benötigt.`; 
+                    errorDisplay.style.display = 'block'; return;
+                }
+                
+                let value;
+                try { value = new Fraction(parseFloat(valueStr.replace(',', '.'))); } 
+                catch (e) { errorDisplay.textContent = `Zeile ${i+1}: Ungültiger Wert.`; errorDisplay.style.display = 'block'; return; }
+
+                const freq = parseInt(freqStr, 10);
+                if (isNaN(freq) || freq < 0) {
+                    errorDisplay.textContent = `Zeile ${i+1}: Ungültige Häufigkeit.`; errorDisplay.style.display = 'block'; return;
+                }
+                if (freq === 0) continue;
+
+                groups.push({ value: value, freq: freq });
+                totalN += freq;
+                const numericValue = value.valueOf();
+                if (numericValue < minX) minX = numericValue;
+                if (numericValue > maxX) maxX = numericValue;
+            }
+
+            if (groups.length === 0) {
+                errorDisplay.textContent = "Keine gültigen Daten eingegeben.";
+                errorDisplay.style.display = 'block'; return;
+            }
+            
+            const totalN_frac = new Fraction(totalN);
+
+            // Mittelwert (mu)
+            let sum_xf = new Fraction(0);
+            groups.forEach(g => sum_xf = sum_xf.add(g.value.mul(g.freq)));
+            const mu = totalN > 0 ? sum_xf.div(totalN_frac) : new Fraction(0);
+
+            document.getElementById('meanValueLatex').textContent = `$$${formatFractionToLatex(mu)}$$`;
+            document.getElementById('meanValueDecimal').textContent = `≈ ${mu.valueOf().toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 4})}`;
+
+            // Ausmultiplizierte Daten für Median/Quartile
+            let expandedData = [];
+            groups.sort((a,b) => a.value.compare(b.value)); // Sort groups by value for correct expansion
+            groups.forEach(g => {
+                const numericVal = g.value.valueOf();
+                for (let i = 0; i < g.freq; i++) expandedData.push(numericVal);
+            });
+            // expandedData is already sorted due to sorted groups and then appending
+
+            document.getElementById('totalN').textContent = totalN.toLocaleString('de-DE');
+            document.getElementById('sortedDataDisplay').textContent = expandedData.length <= 200 ? expandedData.map(d => d.toLocaleString('de-DE')).join(', ') : `Liste zu lang (${expandedData.length} Werte).`;
+
+
+            let median = NaN, q1 = NaN, q3 = NaN, iqr = NaN, range = NaN, stdDev = NaN, variance = new Fraction(0);
+            const decFormat = {minimumFractionDigits: 2, maximumFractionDigits: 2}; // Für gerundete Dezimalanzeige
+
+            if (totalN > 0) {
+                // Median
+                const mid_idx = Math.floor(totalN / 2);
+                median = (totalN % 2 === 1) ? expandedData[mid_idx] : (expandedData[mid_idx - 1] + expandedData[mid_idx]) / 2;
+                
+                // Quartile
+                q1 = getPercentile(expandedData, 0.25);
+                q3 = getPercentile(expandedData, 0.75);
+                if (!isNaN(q1) && !isNaN(q3)) iqr = q3 - q1;
+
+                // Spanne
+                range = maxX - minX;
+
+                // Varianz (Verschiebungssatz) & Standardabweichung
+                let sum_x_sq_f = new Fraction(0);
+                groups.forEach(g => sum_x_sq_f = sum_x_sq_f.add(g.value.pow(2).mul(g.freq)));
+                
+                const term1_var = sum_x_sq_f.div(totalN_frac);
+                variance = term1_var.sub(mu.pow(2));
+                
+                if (variance.valueOf() >= 0) { // Nur positive Varianz für Wurzel
+                     stdDev = Math.sqrt(variance.valueOf());
+                }
+            }
+            
+            document.getElementById('medianValue').textContent = isNaN(median) ? "N/A" : median.toLocaleString('de-DE', decFormat);
+            document.getElementById('q1Value').textContent = isNaN(q1) ? "N/A" : q1.toLocaleString('de-DE', decFormat);
+            document.getElementById('q3Value').textContent = isNaN(q3) ? "N/A" : q3.toLocaleString('de-DE', decFormat);
+            document.getElementById('iqrValue').textContent = isNaN(iqr) ? "N/A" : iqr.toLocaleString('de-DE', decFormat);
+            
+            document.getElementById('varianceValueLatex').textContent = `$$${formatFractionToLatex(variance)}$$`;
+            document.getElementById('varianceValueDecimal').textContent = `≈ ${variance.valueOf().toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 4})}`;
+            document.getElementById('stdDevValue').textContent = isNaN(stdDev) ? "N/A" : stdDev.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 4});
+            document.getElementById('rangeValue').textContent = isNaN(range) ? "N/A" : range.toLocaleString('de-DE', decFormat);
+            
+            resultsContainer.style.display = 'block';
+            renderAllMath();
+        }
+
+        document.getElementById('dataInput').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                // This input field is no longer used directly for calculation,
+                // but we can keep the listener if we add a global calculate button later
+                // or simply remove this if it causes confusion.
+                // For now, it does nothing as data comes from dynamic rows.
+            }
+        });
+    </script>
+
+</body>
+</html>

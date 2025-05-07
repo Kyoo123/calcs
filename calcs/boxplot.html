@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boxplot Rechner (Mobilfreundlich, Aufgerundet)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            margin: 20px;
+            background-color: #f4f4f8;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 600px; /* Maximale Breite für größere Bildschirme, zentriert sich selbst */
+            margin-left: auto;
+            margin-right: auto;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            font-size: 1.8em; /* Relative Schriftgröße */
+            margin-bottom: 1em;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 1em;
+        }
+        input[type="text"] {
+            width: 100%; /* Volle Breite des Containers nutzen */
+            padding: 12px 10px; /* Etwas mehr Padding für bessere Touch-Bedienung */
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box; /* Wichtig für width: 100% und padding */
+            font-size: 1em;
+        }
+        button {
+            background-color: #007bff; /* Modernere Farbe */
+            color: white;
+            padding: 12px 18px; /* Größer für Touch */
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em; /* Relative Schriftgröße */
+            width: 100%; /* Volle Breite für bessere Erreichbarkeit auf Mobilgeräten */
+            box-sizing: border-box;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .results {
+            margin-top: 25px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        .results h2 {
+            font-size: 1.2em;
+            margin-top: 0;
+            margin-bottom: 0.8em;
+            color: #495057;
+        }
+        .results p {
+            margin: 10px 0;
+            font-size: 1em; /* Gute Lesbarkeit */
+            word-wrap: break-word; /* Lange Zahlenreihen umbrechen */
+        }
+        .results span {
+            font-weight: bold;
+            color: #0056b3;
+        }
+        .error {
+            color: #dc3545; /* Bootstrap danger color */
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 0.95em;
+        }
+
+        /* Media Query für kleinere Bildschirme */
+        @media (max-width: 600px) {
+            body {
+                margin: 10px; /* Weniger Rand auf kleinen Bildschirmen */
+            }
+            .container {
+                padding: 15px; /* Etwas weniger Padding im Container */
+            }
+            h1 {
+                font-size: 1.6em;
+            }
+            button {
+                font-size: 1.1em; /* Button Text etwas größer für bessere Lesbarkeit/Klickbarkeit */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Boxplot Datenrechner</h1>
+
+        <label for="dataInput">Zahlen eingeben (mit Komma "," getrennt):</label>
+        <input type="text" id="dataInput" placeholder="z.B. 1,2.5,3.7,4,5,6,7,8,9,10.1">
+
+        <button onclick="calculateBoxplot()">Berechnen</button>
+
+        <div id="errorDisplay" class="error" style="display:none;"></div>
+        <div id="results" class="results" style="display:none;">
+            <h2>Ergebnisse:</h2>
+            <p>Eingegebene Daten (sortiert): <span id="sortedData"></span></p>
+            <p>Mindestwert (aufgerundet): <span id="min"></span></p>
+            <p>Erstes Quartil (Q1) (aufgerundet): <span id="q1"></span></p>
+            <p>Median (Q2) (aufgerundet): <span id="median"></span></p>
+            <p>Drittes Quartil (Q3) (aufgerundet): <span id="q3"></span></p>
+            <p>Maximalwert (aufgerundet): <span id="max"></span></p>
+        </div>
+    </div>
+
+    <script>
+        function calculateBoxplot() {
+            const dataInput = document.getElementById('dataInput').value;
+            const errorDisplay = document.getElementById('errorDisplay');
+            const resultsDiv = document.getElementById('results');
+
+            errorDisplay.textContent = '';
+            errorDisplay.style.display = 'none';
+            resultsDiv.style.display = 'none';
+
+            if (dataInput.trim() === "") {
+                errorDisplay.textContent = "Bitte geben Sie Daten ein.";
+                errorDisplay.style.display = 'block';
+                return;
+            }
+
+            const dataArrayStrings = dataInput.split(',');
+            let dataArrayNumbers = [];
+            let hasError = false;
+
+            for (let i = 0; i < dataArrayStrings.length; i++) {
+                const numStr = dataArrayStrings[i].trim();
+                if (numStr === "") {
+                    if (i < dataArrayStrings.length -1 && dataArrayStrings.slice(i+1).every(s => s.trim() === "")) continue;
+                }
+                const num = parseFloat(numStr.replace(',', '.'));
+                if (isNaN(num)) {
+                    hasError = true;
+                    break;
+                }
+                dataArrayNumbers.push(num);
+            }
+            
+            dataArrayNumbers = dataArrayNumbers.filter(n => !isNaN(n));
+
+            if (hasError || dataArrayNumbers.length === 0) {
+                errorDisplay.textContent = "Ungültige Eingabe. Bitte stellen Sie sicher, dass alle Werte Zahlen sind und korrekt mit Komma getrennt wurden (z.B. 1, 2.5, 3).";
+                errorDisplay.style.display = 'block';
+                return;
+            }
+
+            if (dataArrayNumbers.length < 1) {
+                 errorDisplay.textContent = "Für eine Boxplot-Berechnung werden mindestens 1-4 Datenpunkte benötigt.";
+                 errorDisplay.style.display = 'block';
+            }
+
+            dataArrayNumbers.sort((a, b) => a - b);
+
+            const n = dataArrayNumbers.length;
+
+            let minVal = dataArrayNumbers[0];
+            let maxVal = dataArrayNumbers[n - 1];
+            let medianVal = calculateMedian(dataArrayNumbers);
+            let q1Val, q3Val;
+
+            function getPercentile(arr, p) {
+                if (arr.length === 0) return NaN;
+                if (arr.length === 1) return arr[0];
+
+                const index = p * (arr.length + 1);
+                if (index < 1) return arr[0];
+                if (index >= arr.length) return arr[arr.length - 1];
+
+                const lowerIndex = Math.floor(index) -1;
+                const fraction = index - Math.floor(index);
+
+                if (fraction === 0) {
+                    return arr[lowerIndex];
+                } else {
+                    return arr[lowerIndex] + fraction * (arr[lowerIndex + 1] - arr[lowerIndex]);
+                }
+            }
+
+            if (n > 0) {
+                 q1Val = getPercentile(dataArrayNumbers, 0.25);
+                 q3Val = getPercentile(dataArrayNumbers, 0.75);
+            } else {
+                minVal = NaN; maxVal = NaN; medianVal = NaN; q1Val = NaN; q3Val = NaN;
+            }
+
+            // Werte aufrunden mit Math.ceil()
+            if (minVal !== undefined && !isNaN(minVal)) minVal = Math.ceil(minVal);
+            if (maxVal !== undefined && !isNaN(maxVal)) maxVal = Math.ceil(maxVal);
+            if (medianVal !== undefined && !isNaN(medianVal)) medianVal = Math.ceil(medianVal);
+            if (q1Val !== undefined && !isNaN(q1Val)) q1Val = Math.ceil(q1Val);
+            if (q3Val !== undefined && !isNaN(q3Val)) q3Val = Math.ceil(q3Val);
+
+            // Werte anzeigen
+            // Die sortierten Daten werden nicht gerundet angezeigt
+            document.getElementById('sortedData').textContent = dataArrayNumbers.map(num => num.toLocaleString('de-DE')).join(', ');
+            
+            document.getElementById('min').textContent = minVal !== undefined && !isNaN(minVal) ? minVal.toLocaleString('de-DE') : 'N/A';
+            document.getElementById('q1').textContent = q1Val !== undefined && !isNaN(q1Val) ? q1Val.toLocaleString('de-DE') : (n < 3 ? 'N/A (zu wenig Daten)' : 'N/A');
+            document.getElementById('median').textContent = medianVal !== undefined && !isNaN(medianVal) ? medianVal.toLocaleString('de-DE') : 'N/A';
+            document.getElementById('q3').textContent = q3Val !== undefined && !isNaN(q3Val) ? q3Val.toLocaleString('de-DE') : (n < 3 ? 'N/A (zu wenig Daten)' : 'N/A');
+            document.getElementById('max').textContent = maxVal !== undefined && !isNaN(maxVal) ? maxVal.toLocaleString('de-DE') : 'N/A';
+
+            resultsDiv.style.display = 'block';
+        }
+
+        function calculateMedian(arr) {
+            if (arr.length === 0) return NaN;
+            const mid = Math.floor(arr.length / 2);
+            arr.sort((a, b) => a - b); // Sicherstellen, dass das Array sortiert ist (obwohl es bereits sein sollte)
+            if (arr.length % 2 === 0) {
+                return (arr[mid - 1] + arr[mid]) / 2;
+            } else {
+                return arr[mid];
+            }
+        }
+
+        document.getElementById('dataInput').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                calculateBoxplot();
+            }
+        });
+    </script>
+
+</body>
+</html>

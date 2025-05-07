@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boxplot Rechner mit Diagrammen</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            margin: 20px;
+            background-color: #f4f4f8;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 800px; 
+            margin-left: auto;
+            margin-right: auto;
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        h2 {
+            margin-top: 30px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 1em; }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 18px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button:hover { background-color: #0056b3; }
+        .stats-output {
+            margin-top: 25px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        .stats-output h3 { font-size: 1.2em; margin-top: 0; margin-bottom: 0.8em; color: #495057; }
+        .stats-output p { margin: 10px 0; font-size: 1em; word-wrap: break-word; }
+        .stats-output span { font-weight: bold; color: #0056b3; }
+        .error {
+            color: #dc3545; background-color: #f8d7da; border: 1px solid #f5c6cb;
+            padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 0.95em;
+        }
+        .chart-container {
+            width: 100%;
+            max-width: 700px;
+            height: 450px;
+            margin: 30px auto;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .chart-placeholder-message {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+        }
+
+        @media (max-width: 600px) {
+            body { margin: 10px; }
+            .container { padding: 15px; }
+            h1 { font-size: 1.6em; }
+            button { font-size: 1.1em; }
+            .chart-container { height: 350px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Boxplot Rechner & Diagramme</h1>
+
+        <label for="dataInput">Zahlen eingeben (mit Komma "," getrennt):</label>
+        <input type="text" id="dataInput" placeholder="z.B. 1,2.5,3.7,4,5,6,7,8,9,10.1">
+
+        <button onclick="calculateAndDraw()">Berechnen & Zeichnen</button>
+
+        <div id="errorDisplay" class="error" style="display:none;"></div>
+        
+        <div id="statsOutput" class="stats-output" style="display:none;">
+            <h3>Statistische Kennwerte (gerundet):</h3>
+            <p>Eingegebene Daten (sortiert): <span id="sortedData"></span></p>
+            <p>Mindestwert: <span id="minVal"></span></p>
+            <p>Erstes Quartil (Q1): <span id="q1Val"></span></p>
+            <p>Median (Q2): <span id="medianVal"></span></p>
+            <p>Drittes Quartil (Q3): <span id="q3Val"></span></p>
+            <p>Maximalwert: <span id="maxVal"></span></p>
+        </div>
+
+        <h2>Grafische Darstellungen</h2>
+        <div id="chartsArea">
+            <div id="boxplotChart" class="chart-container">
+                 <p class="chart-placeholder-message">Boxplot wird hier angezeigt.</p>
+            </div>
+            <div id="pieChart" class="chart-container">
+                 <p class="chart-placeholder-message">Kreisdiagramm wird hier angezeigt.</p>
+            </div>
+            <div id="barChart" class="chart-container">
+                 <p class="chart-placeholder-message">Säulendiagramm wird hier angezeigt.</p>
+            </div>
+            <div id="horizontalBarChart" class="chart-container">
+                 <p class="chart-placeholder-message">Balkendiagramm wird hier angezeigt.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function calculateAndDraw() {
+            const dataInput = document.getElementById('dataInput').value;
+            const errorDisplay = document.getElementById('errorDisplay');
+            const statsOutputDiv = document.getElementById('statsOutput');
+            
+            // Reset
+            errorDisplay.textContent = '';
+            errorDisplay.style.display = 'none';
+            statsOutputDiv.style.display = 'none';
+            // Alte Diagramme löschen (wichtig für Neuberechnungen)
+            ['boxplotChart', 'pieChart', 'barChart', 'horizontalBarChart'].forEach(id => {
+                const chartDiv = document.getElementById(id);
+                Plotly.purge(chartDiv); // Plotly-spezifisches Löschen
+                chartDiv.innerHTML = `<p class="chart-placeholder-message">${id.replace('Chart','')} wird hier angezeigt.</p>`; // Platzhalter wiederherstellen
+            });
+
+
+            if (dataInput.trim() === "") {
+                errorDisplay.textContent = "Bitte geben Sie Daten ein.";
+                errorDisplay.style.display = 'block';
+                return;
+            }
+
+            const dataArrayStrings = dataInput.split(',');
+            let dataNumbers = [];
+            let hasError = false;
+
+            for (let i = 0; i < dataArrayStrings.length; i++) {
+                const numStr = dataArrayStrings[i].trim();
+                if (numStr === "") continue;
+                const num = parseFloat(numStr.replace(',', '.'));
+                if (isNaN(num)) {
+                    hasError = true;
+                    break;
+                }
+                dataNumbers.push(num);
+            }
+            
+            dataNumbers = dataNumbers.filter(n => !isNaN(n));
+
+            if (hasError || dataNumbers.length === 0) {
+                errorDisplay.textContent = "Ungültige Eingabe. Bitte nur Zahlen, mit Komma getrennt.";
+                errorDisplay.style.display = 'block';
+                return;
+            }
+
+            dataNumbers.sort((a, b) => a - b);
+            const n = dataNumbers.length;
+
+            // Statistische Kennwerte berechnen (unverändert, mit Aufrunden für Textausgabe)
+            let minStat = dataNumbers[0];
+            let maxStat = dataNumbers[n - 1];
+            let medianStat = calculateMedianForStats(dataNumbers); // Eigene Medianfunktion für Stats
+            let q1Stat, q3Stat;
+
+            function getPercentileForStats(arr, p) {
+                if (arr.length === 0) return NaN;
+                if (arr.length === 1) return arr[0];
+                const index = p * (arr.length + 1);
+                if (index < 1) return arr[0];
+                if (index >= arr.length) return arr[arr.length - 1];
+                const lowerIndex = Math.floor(index) -1;
+                const fraction = index - Math.floor(index);
+                if (fraction === 0) return arr[lowerIndex];
+                return arr[lowerIndex] + fraction * (arr[lowerIndex + 1] - arr[lowerIndex]);
+            }
+            
+            if (n > 0) {
+                 q1Stat = getPercentileForStats(dataNumbers, 0.25);
+                 q3Stat = getPercentileForStats(dataNumbers, 0.75);
+            } else {
+                minStat = NaN; maxStat = NaN; medianStat = NaN; q1Stat = NaN; q3Stat = NaN;
+            }
+
+            // Aufrunden für die Text-Anzeige der Statistiken
+            if (!isNaN(minStat)) minStat = Math.ceil(minStat);
+            if (!isNaN(maxStat)) maxStat = Math.ceil(maxStat);
+            if (!isNaN(medianStat)) medianStat = Math.ceil(medianStat);
+            if (!isNaN(q1Stat)) q1Stat = Math.ceil(q1Stat);
+            if (!isNaN(q3Stat)) q3Stat = Math.ceil(q3Stat);
+
+            // Text-Statistiken anzeigen
+            document.getElementById('sortedData').textContent = dataNumbers.map(num => num.toLocaleString('de-DE')).join(', ');
+            document.getElementById('minVal').textContent = isNaN(minStat) ? 'N/A' : minStat.toLocaleString('de-DE');
+            document.getElementById('q1Val').textContent = isNaN(q1Stat) ? (n < 3 ? 'N/A (zu wenig Daten)' : 'N/A') : q1Stat.toLocaleString('de-DE');
+            document.getElementById('medianVal').textContent = isNaN(medianStat) ? 'N/A' : medianStat.toLocaleString('de-DE');
+            document.getElementById('q3Val').textContent = isNaN(q3Stat) ? (n < 3 ? 'N/A (zu wenig Daten)' : 'N/A') : q3Stat.toLocaleString('de-DE');
+            document.getElementById('maxVal').textContent = isNaN(maxStat) ? 'N/A' : maxStat.toLocaleString('de-DE');
+            statsOutputDiv.style.display = 'block';
+
+            // --- Diagramme zeichnen ---
+            // Rohdaten (dataNumbers) für die Diagramme verwenden, nicht die gerundeten Statistiken.
+
+            // 1. Boxplot
+            if (n > 0) {
+                const boxTrace = { y: dataNumbers, type: 'box', name: 'Ihre Daten', boxpoints: 'all', jitter: 0.3, pointpos: -1.8 };
+                const boxLayout = { title: 'Boxplot der Daten', yaxis: { title: 'Werte' } };
+                Plotly.newPlot('boxplotChart', [boxTrace], boxLayout, {responsive: true});
+            } else {
+                document.getElementById('boxplotChart').innerHTML = '<p class="chart-placeholder-message">Zu wenig Daten für Boxplot.</p>';
+            }
+
+            // Daten für Häufigkeitsdiagramme vorbereiten
+            const frequencies = getFrequencies(dataNumbers);
+            const freqLabels = frequencies.labels.map(l => l.toLocaleString('de-DE')); // Formatierte Labels
+            const freqValues = frequencies.values;
+
+            const MAX_UNIQUE_VALUES_FOR_PIE_BAR = 20; // Max. Kategorien für übersichtliche Diagramme
+
+            // 2. Kreisdiagramm
+            if (n > 0 && freqLabels.length > 0 && freqLabels.length <= MAX_UNIQUE_VALUES_FOR_PIE_BAR) {
+                const pieTrace = { labels: freqLabels, values: freqValues, type: 'pie', textinfo: "label+percent", insidetextorientation: "radial" };
+                const pieLayout = { title: 'Kreisdiagramm der Wertehäufigkeiten' };
+                Plotly.newPlot('pieChart', [pieTrace], pieLayout, {responsive: true});
+            } else {
+                let pieMsg = n === 0 ? 'Keine Daten für Kreisdiagramm.' : 'Zu viele eindeutige Werte für ein übersichtliches Kreisdiagramm.';
+                if(freqLabels.length === 0 && n > 0) pieMsg = 'Keine eindeutigen Werte für Kreisdiagramm gefunden.';
+                document.getElementById('pieChart').innerHTML = `<p class="chart-placeholder-message">${pieMsg}</p>`;
+            }
+
+            // 3. Säulendiagramm (Vertical Bar Chart)
+             if (n > 0 && freqLabels.length > 0 && freqLabels.length <= MAX_UNIQUE_VALUES_FOR_PIE_BAR) {
+                const barTrace = { x: freqLabels, y: freqValues, type: 'bar', marker: {color: 'rgb(26, 118, 255)'} };
+                const barLayout = { title: 'Säulendiagramm der Wertehäufigkeiten', xaxis: { title: 'Werte' }, yaxis: { title: 'Häufigkeit' } };
+                Plotly.newPlot('barChart', [barTrace], barLayout, {responsive: true});
+            } else {
+                let barMsg = n === 0 ? 'Keine Daten für Säulendiagramm.' : 'Zu viele eindeutige Werte für ein übersichtliches Säulendiagramm.';
+                if(freqLabels.length === 0 && n > 0) barMsg = 'Keine eindeutigen Werte für Säulendiagramm gefunden.';
+                document.getElementById('barChart').innerHTML = `<p class="chart-placeholder-message">${barMsg}</p>`;
+            }
+            
+            // 4. Balkendiagramm (Horizontal Bar Chart)
+            if (n > 0 && freqLabels.length > 0 && freqLabels.length <= MAX_UNIQUE_VALUES_FOR_PIE_BAR) {
+                const hBarTrace = { x: freqValues, y: freqLabels, type: 'bar', orientation: 'h', marker: {color: 'rgb(55, 83, 109)'}};
+                const hBarLayout = { title: 'Balkendiagramm der Wertehäufigkeiten', xaxis: { title: 'Häufigkeit' }, yaxis: { title: 'Werte', automargin: true } };
+                Plotly.newPlot('horizontalBarChart', [hBarTrace], hBarLayout, {responsive: true});
+            } else {
+                let hBarMsg = n === 0 ? 'Keine Daten für Balkendiagramm.' : 'Zu viele eindeutige Werte für ein übersichtliches Balkendiagramm.';
+                 if(freqLabels.length === 0 && n > 0) hBarMsg = 'Keine eindeutigen Werte für Balkendiagramm gefunden.';
+                document.getElementById('horizontalBarChart').innerHTML = `<p class="chart-placeholder-message">${hBarMsg}</p>`;
+            }
+        }
+
+        function calculateMedianForStats(arr) { // Hilfsfunktion für Median der Stats
+            if (arr.length === 0) return NaN;
+            const mid = Math.floor(arr.length / 2);
+            // Array ist bereits sortiert in calculateAndDraw
+            if (arr.length % 2 === 0) {
+                return (arr[mid - 1] + arr[mid]) / 2;
+            } else {
+                return arr[mid];
+            }
+        }
+
+        function getFrequencies(dataArray) {
+            const frequencyMap = new Map();
+            for (const item of dataArray) {
+                frequencyMap.set(item, (frequencyMap.get(item) || 0) + 1);
+            }
+            // Sortieren nach Wert für konsistente Diagrammanzeige (optional, aber oft besser)
+            const sortedFrequencies = new Map([...frequencyMap.entries()].sort((a, b) => a[0] - b[0]));
+            return {
+                labels: Array.from(sortedFrequencies.keys()),
+                values: Array.from(sortedFrequencies.values())
+            };
+        }
+        
+        // Event Listener für Enter-Taste
+        document.getElementById('dataInput').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                calculateAndDraw();
+            }
+        });
+    </script>
+
+</body>
+</html>

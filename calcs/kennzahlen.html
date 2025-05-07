@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mittelwert & Varianz Rechner (Präzisionstest)</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" crossorigin="anonymous">
+    
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" crossorigin="anonymous"></script>
+    
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+
+    <script defer src="https://cdn.jsdelivr.net/npm/fraction.js@4.2.0/fraction.min.js"></script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            margin: 20px;
+            background-color: #f8f9fa;
+            color: #212529;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            padding-bottom: 40px;
+        }
+        .container {
+            background-color: #fff;
+            padding: 25px 30px;
+            border-radius: 10px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12);
+            width: 100%;
+            max-width: 700px; 
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #007bff;
+            text-align: center;
+            font-size: 2em;
+            margin-bottom: 1.2em;
+        }
+        .input-section { margin-bottom: 25px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 1.05em; color: #495057; }
+        input[type="text"] { width: 100%; padding: 12px 15px; margin-bottom: 20px; border: 1px solid #ced4da; border-radius: 5px; box-sizing: border-box; font-size: 1em; }
+        button { background-color: #28a745; color: white; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 1.1em; width: 100%; box-sizing: border-box; transition: background-color 0.2s ease-in-out; }
+        button:hover { background-color: #218838; }
+        .results-container { margin-top: 20px; }
+        .kennzahl { background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
+        .kennzahl h3 { font-size: 1.5em; color: #0056b3; margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        .kennzahl p.value { margin: 12px 0; font-size: 1.1em; color: #343a40; display: flex; align-items: center; flex-wrap: wrap; }
+        .kennzahl .value .latex-fraction { font-weight: bold; color: #17a2b8; font-size: 1.2em; margin-right: 8px; }
+        .kennzahl .value .decimal-approx { font-size: 1.05em; color: #5a6268;}
+
+        .formula { margin-top: 15px; padding: 15px; background-color: #e9ecef; border-radius: 4px; font-size: 0.95em; }
+        .formula .formula-title { font-weight: bold; margin-bottom: 8px; color: #495057; }
+        .formula-block { text-align: center; margin-bottom: 10px; font-size: 1.1em; min-height: 1.5em; }
+        .formula .explanation { font-size: 0.9em; color: #6c757d; margin-top: 10px; }
+        .error { color: #dc3545; background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 12px; border-radius: 5px; margin-top: 15px; text-align: center; font-size: 1em; }
+        .katex { font-size: 1.15em; }
+        .latex-fraction .katex { font-size: 1.25em !important; }
+        .note { font-size: 0.9em; color: #6c757d; margin-top: 5px; }
+
+        @media (max-width: 600px) {
+            body { margin: 10px; padding-top: 10px; padding-bottom: 20px; }
+            .container { padding: 20px; }
+            h1 { font-size: 1.7em; }
+            .kennzahl h3 { font-size: 1.3em; }
+            .katex { font-size: 1.05em; }
+            .latex-fraction .katex { font-size: 1.15em !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Mittelwert & Varianz Rechner (mit Bruchrechnung)</h1>
+
+        <div class="input-section">
+            <label for="dataInput">Datenwerte eingeben (mit Komma "," getrennt):</label>
+            <input type="text" id="dataInput" placeholder="z.B. 1, 3, 4 oder 1.5, 2, 3.25" value="1, 3, 4">
+            <button onclick="calculateAll()">Berechnen</button>
+            <div id="errorDisplay" class="error" style="display:none;"></div>
+        </div>
+        
+        <div id="resultsContainer" class="results-container" style="display:none;">
+            <div class="kennzahl">
+                <h3>Mittelwert (Mü) ($\mu$)</h3>
+                <p class="value">
+                    Berechneter Wert: 
+                    <span class="latex-fraction" id="meanValueLatex"></span> 
+                    <span class="decimal-approx" id="meanValueDecimal"></span>
+                </p>
+                <div class="formula">
+                    <p class="formula-title">Formel:</p>
+                    <div class="formula-block">$$ \mu = \frac{x_1 + x_2 + \ldots + x_n}{n} $$</div>
+                    <p class="explanation">
+                        $\mu$: Mittelwert; $x_i$: einzelne Datenwerte; $n$: Anzahl der Werte.
+                    </p>
+                </div>
+            </div>
+
+            <div class="kennzahl">
+                <h3>Varianz (Sigma) ($\sigma^2$)</h3>
+                <p class="value">
+                    Nach Definition: 
+                    <span class="latex-fraction" id="varianceByDefLatex"></span>
+                    <span class="decimal-approx" id="varianceByDefDecimal"></span>
+                </p>
+                <p class="value">
+                    Nach Verschiebungssatz: 
+                    <span class="latex-fraction" id="varianceByShiftLatex"></span>
+                    <span class="decimal-approx" id="varianceByShiftDecimal"></span>
+                </p>
+                <p class="note">(Beide Werte für die Varianz sollten identisch sein.)</p>
+                
+                <div class="formula">
+                    <p class="formula-title">Formel (Definition der Varianz):</p>
+                    <div class="formula-block">$$ \sigma^2 = \frac{(x_1 - \mu)^2 + (x_2 - \mu)^2 + \ldots + (x_n - \mu)^2}{n} $$</div>
+                    <p class="explanation">
+                        $\sigma^2$: Varianz; $x_i$: einzelne Datenwerte; $\mu$: Mittelwert; $n$: Anzahl der Werte.
+                    </p>
+                </div>
+
+                <div class="formula" style="margin-top: 15px;">
+                    <p class="formula-title">Formel (Varianz nach Verschiebungssatz):</p>
+                    <div class="formula-block">$$ \sigma^2 = \frac{x_1^2 + x_2^2 + \ldots + x_n^2}{n} - \mu^2 $$</div>
+                     <p class="explanation">
+                        $\sigma^2$: Varianz; $x_i^2$: Quadrate der einzelnen Datenwerte; $\mu^2$: Quadrat des Mittelwerts; $n$: Anzahl der Werte.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function renderAllMath() {
+            if (typeof renderMathInElement === 'function') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false},
+                        {left: '\\[', right: '\\]', display: true}, {left: '\\(', right: '\\)', display: false}
+                    ]
+                });
+                // console.log("KaTeX: All math re-rendered."); // Kann für Debugging aktiviert bleiben
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            console.log("DOM fully loaded and parsed.");
+            if (typeof Fraction === 'function') {
+                console.log("Fraction.js library loaded successfully.");
+            } else {
+                console.error("Fraction.js library NOT loaded!");
+                const errorDiv = document.getElementById('errorDisplay');
+                if (errorDiv) {
+                    errorDiv.textContent = "Fehler: Bruchrechnungs-Bibliothek (Fraction.js) konnte nicht geladen werden. Bitte Internetverbindung und Browser-Konsole (F12, Tab 'Netzwerk') prüfen.";
+                    errorDiv.style.display = 'block';
+                }
+            }
+            renderAllMath(); 
+        });
+
+        function formatFractionToLatex(frac) {
+            if (!frac || typeof frac.toFraction !== 'function') {
+                console.error("Invalid object passed to formatFractionToLatex:", frac);
+                return "ErrorInFracFormat";
+            }
+            if (frac.d === 1) {
+                return frac.n.toString();
+            } else {
+                if (frac.s === -1) { // frac.s ist 1 für positiv, -1 für negativ
+                     return `-\\frac{${Math.abs(frac.n)}}{${Math.abs(frac.d)}}`;
+                }
+                return `\\frac{${frac.n}}{${frac.d}}`;
+            }
+        }
+
+        function calculateAll() {
+            const dataInputStr = document.getElementById('dataInput').value;
+            const errorDisplay = document.getElementById('errorDisplay');
+            const resultsContainer = document.getElementById('resultsContainer');
+            
+            errorDisplay.textContent = ''; 
+            errorDisplay.style.display = 'none';
+
+            if (typeof Fraction !== 'function') {
+                 errorDisplay.textContent = "Fehler: Bruchrechnungs-Bibliothek ist nicht verfügbar. Berechnung nicht möglich.";
+                 errorDisplay.style.display = 'block';
+                 resultsContainer.style.display = 'none';
+                 return;
+            }
+
+            if (dataInputStr.trim() === "") {
+                errorDisplay.textContent = "Bitte geben Sie Zahlenwerte ein.";
+                errorDisplay.style.display = 'block';
+                resultsContainer.style.display = 'none';
+                return;
+            }
+
+            const dataArrayStrings = dataInputStr.split(',');
+            let fractionNumbers = [];
+            let inputError = false;
+
+            for (const str of dataArrayStrings) {
+                const trimmedStr = str.trim();
+                if (trimmedStr === "") continue; 
+                try {
+                    const numForFraction = parseFloat(trimmedStr.replace(',', '.'));
+                    if (isNaN(numForFraction)) throw new Error("Not a number");
+                    fractionNumbers.push(new Fraction(numForFraction));
+                } catch (e) {
+                    inputError = true;
+                    break;
+                }
+            }
+            
+            if (inputError || fractionNumbers.length === 0) {
+                errorDisplay.textContent = "Ungültige Eingabe. Bitte stellen Sie sicher, dass alle Werte Zahlen sind und korrekt mit Komma getrennt wurden.";
+                errorDisplay.style.display = 'block';
+                resultsContainer.style.display = 'none';
+                return;
+            }
+
+            const n_val = fractionNumbers.length;
+            const n_frac = new Fraction(n_val);
+
+            let mu = new Fraction(0);
+            if (n_val > 0) {
+                let sum_x = new Fraction(0);
+                for (const f_num of fractionNumbers) {
+                    sum_x = sum_x.add(f_num);
+                }
+                mu = sum_x.div(n_frac);
+            }
+            
+            document.getElementById('meanValueLatex').textContent = `$$${formatFractionToLatex(mu)}$$`;
+            document.getElementById('meanValueDecimal').textContent = `≈ ${mu.valueOf().toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; // Geändert auf 2 Nachkommastellen
+
+            let varianceDef = new Fraction(0);
+            let varianceShift = new Fraction(0);
+
+            if (n_val > 0) {
+                // Varianz (sigma^2) - Methode 1: Definition
+                let sum_sq_diff = new Fraction(0);
+                for (const f_num of fractionNumbers) {
+                    const diff = f_num.sub(mu);
+                    sum_sq_diff = sum_sq_diff.add(diff.pow(2));
+                }
+                varianceDef = sum_sq_diff.div(n_frac);
+
+                // Varianz (sigma^2) - Methode 2: Verschiebungssatz
+                let sum_x_sq = new Fraction(0);
+                for (const f_num of fractionNumbers) {
+                    sum_x_sq = sum_x_sq.add(f_num.pow(2));
+                }
+                const term1_shift = sum_x_sq.div(n_frac);
+                const mu_sq = mu.pow(2);
+                varianceShift = term1_shift.sub(mu_sq);
+            }
+            
+            document.getElementById('varianceByDefLatex').textContent = `$$${formatFractionToLatex(varianceDef)}$$`;
+            document.getElementById('varianceByDefDecimal').textContent = `≈ ${varianceDef.valueOf().toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; // Geändert
+
+            document.getElementById('varianceByShiftLatex').textContent = `$$${formatFractionToLatex(varianceShift)}$$`;
+            document.getElementById('varianceByShiftDecimal').textContent = `≈ ${varianceShift.valueOf().toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; // Geändert
+            
+            resultsContainer.style.display = 'block';
+            renderAllMath(); 
+        }
+
+        document.getElementById('dataInput').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); 
+                calculateAll();
+            }
+        });
+    </script>
+
+</body>
+</html>

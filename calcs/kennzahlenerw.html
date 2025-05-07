@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistische Kennzahlen Rechner (erweitert)</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" 
+        onload="renderMathInElement(document.body, { delimiters: [ {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true} ] });" crossorigin="anonymous">
+    </script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            margin: 20px;
+            background-color: #f8f9fa;
+            color: #212529;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-width: 750px; /* Etwas breiter für mehr Inhalt */
+            margin-left: auto;
+            margin-right: auto;
+        }
+        h1 {
+            color: #343a40;
+            text-align: center;
+            font-size: 2em;
+            margin-bottom: 1.2em;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            font-size: 1.05em;
+            color: #495057;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 15px;
+            margin-bottom: 25px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            width: 100%;
+            box-sizing: border-box;
+            transition: background-color 0.2s ease-in-out;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .results-container {
+            margin-top: 30px;
+        }
+        .kennzahl {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .kennzahl h3 {
+            font-size: 1.5em;
+            color: #0056b3;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .kennzahl p.value { /* Gezielt für Wert-Absätze */
+            margin: 8px 0 15px 0; /* Mehr Platz nach dem Wert, vor der Formel */
+            font-size: 1em;
+            color: #343a40;
+        }
+        .kennzahl .value span { /* Für das Span-Element mit dem Wert */
+            font-weight: bold;
+            color: #28a745; 
+            font-size: 1.1em;
+        }
+        .formula {
+            margin-top: 10px; /* Weniger Platz, wenn Wert darüber mehr hat */
+            padding: 15px;
+            background-color: #e9ecef; 
+            border-radius: 4px;
+            font-size: 0.95em;
+        }
+        .formula p, .formula ul, .formula ol {
+            margin-bottom: 10px;
+        }
+        .formula .explanation {
+            font-style: italic;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+        .formula ul, .formula ol {
+            padding-left: 20px;
+        }
+        .formula ul li, .formula ol li {
+            margin-bottom: 5px;
+        }
+        .error {
+            color: #dc3545;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 1em;
+        }
+        .katex {
+            font-size: 1.1em; 
+        }
+        .formula ol li {
+            margin-bottom: 15px; 
+        }
+
+
+        @media (max-width: 600px) {
+            body { margin: 10px; }
+            .container { padding: 20px; }
+            h1 { font-size: 1.8em; }
+            button { font-size: 1em; }
+            .kennzahl h3 { font-size: 1.3em; }
+            .kennzahl p, .formula { font-size: 0.95em; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Statistische Kennzahlen</h1>
+
+        <label for="dataInput">Zahlen eingeben (mit Komma "," getrennt):</label>
+        <input type="text" id="dataInput" placeholder="z.B. 10, 12.5, 15, 13, 18, 20, 9, 22">
+
+        <button onclick="calculateAllKennzahlen()">Berechnen</button>
+
+        <div id="errorDisplay" class="error" style="display:none;"></div>
+
+        <div id="resultsContainer" class="results-container" style="display:none;">
+
+            <div class="kennzahl">
+                <h3>Mittelwert (Arithmetisches Mittel)</h3>
+                <p class="value">Wert: <span id="meanValue"></span></p>
+                <div class="formula">
+                    <p>Formel:</p>
+                    $$ \bar{x} = \frac{x_1 + x_2 + \ldots + x_n}{n} = \frac{\sum_{i=1}^{n} x_i}{n} $$
+                    <p class="explanation">Dabei ist $n$ die Anzahl der Werte und $x_i$ sind die einzelnen Datenpunkte.</p>
+                </div>
+            </div>
+
+            <div class="kennzahl">
+                <h3>Median (Zentralwert)</h3>
+                <p class="value">Wert: <span id="medianValue"></span></p>
+                <div class="formula">
+                    <p>Formel / Vorgehen:</p>
+                    <ol>
+                        <li>Sortieren Sie Ihre Daten aufsteigend: $x_{(1)}, x_{(2)}, \ldots, x_{(n)}$.</li>
+                        <li>Wenn die Anzahl der Werte $n$ ungerade ist, ist der Median der Wert genau in der Mitte:
+                            $$ \text{Median} = x_{\left(\frac{n+1}{2}\right)} $$
+                        </li>
+                        <li>Wenn die Anzahl der Werte $n$ gerade ist, ist der Median der Durchschnitt der beiden mittleren Werte:
+                            $$ \text{Median} = \frac{x_{\left(\frac{n}{2}\right)} + x_{\left(\frac{n}{2}+1\right)}}{2} $$
+                        </li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div class="kennzahl">
+                <h3>Quartile</h3>
+                <p class="value">1. Quartil (Q1): <span id="q1Value"></span></p>
+                <p class="value">3. Quartil (Q3): <span id="q3Value"></span></p>
+                 <div class="formula">
+                    <p>Das 1. Quartil (Q1) ist der Median der unteren Hälfte der Daten, das 3. Quartil (Q3) ist der Median der oberen Hälfte der Daten. Es gibt verschiedene Berechnungsmethoden. Hier wird eine Interpolationsmethode verwendet:</p>
+                    <ul>
+                        <li>Position Q1: $P_{Q1} = 0.25 \cdot (n+1)$</li>
+                        <li>Position Q3: $P_{Q3} = 0.75 \cdot (n+1)$</li>
+                    </ul>
+                    <p class="explanation">Der Wert wird dann ggf. zwischen den an $P_{Q1}$ bzw. $P_{Q3}$ liegenden Datenpunkten interpoliert.</p>
+                </div>
+            </div>
+
+            <div class="kennzahl">
+                <h3>Interquartilsabstand (IQR)</h3>
+                <p class="value">Wert: <span id="iqrValue"></span></p>
+                <div class="formula">
+                    <p>Formel:</p>
+                    $$ IQR = Q_3 - Q_1 $$
+                    <p class="explanation">Der Interquartilsabstand ist die Differenz zwischen dem 3. Quartil (Q3) und dem 1. Quartil (Q1). Er umfasst die mittleren 50% der Daten.</p>
+                </div>
+            </div>
+
+            <div class="kennzahl">
+                <h3>Standardabweichung (für eine Stichprobe)</h3>
+                <p class="value">Wert: <span id="stdDevValue"></span></p>
+                <div class="formula">
+                    <p>Formel:</p>
+                    $$ s = \sqrt{\frac{\sum_{i=1}^{n} (x_i - \bar{x})^2}{n-1}} $$
+                    <p class="explanation">Dabei ist $s$ die Standardabweichung der Stichprobe, $x_i$ jeder Wert, $\bar{x}$ der Mittelwert und $n$ die Anzahl der Werte.</p>
+                    <p class="explanation">Hinweis: Für die Standardabweichung der Grundgesamtheit ($\sigma$) würde man durch $n$ statt $n-1$ teilen.</p>
+                </div>
+            </div>
+
+            <div class="kennzahl">
+                <h3>Spanne (Variationsbreite)</h3>
+                <p class="value">Wert: <span id="rangeValue"></span></p>
+                <div class="formula">
+                    <p>Formel:</p>
+                    $$ \text{Spanne} = x_{\text{max}} - x_{\text{min}} $$
+                    <p class="explanation">Dabei ist $x_{\text{max}}$ der größte Wert und $x_{\text{min}}$ der kleinste Wert im Datensatz.</p>
+                </div>
+            </div>
+             <div class="kennzahl">
+                <h3>Sortierte Daten</h3>
+                <p id="sortedDataDisplay" style="word-break: break-all;"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Hilfsfunktion zur Berechnung eines Perzentils (für Q1 und Q3)
+        // Verwendet eine gängige Methode (lineare Interpolation)
+        function getPercentile(sortedArr, p) {
+            if (sortedArr.length === 0) return NaN;
+            if (sortedArr.length === 1) return sortedArr[0];
+
+            const index = p * (sortedArr.length - 1); // Index ist 0-basiert, daher (n-1)*p
+            const lower = Math.floor(index);
+            const upper = Math.ceil(index);
+            const weight = index - lower;
+
+            if (lower === upper) return sortedArr[lower]; // Genau auf einem Datenpunkt
+            return sortedArr[lower] * (1 - weight) + sortedArr[upper] * weight; // Interpolation
+        }
+
+
+        function calculateAllKennzahlen() {
+            const dataInput = document.getElementById('dataInput').value;
+            const errorDisplay = document.getElementById('errorDisplay');
+            const resultsContainer = document.getElementById('resultsContainer');
+
+            errorDisplay.textContent = '';
+            errorDisplay.style.display = 'none';
+            // resultsContainer.style.display = 'none'; // Nicht ausblenden, damit alte Werte sichtbar bleiben bei Fehler
+
+            if (dataInput.trim() === "") {
+                errorDisplay.textContent = "Bitte geben Sie Daten ein.";
+                errorDisplay.style.display = 'block';
+                resultsContainer.style.display = 'none';
+                return;
+            }
+
+            const dataArrayStrings = dataInput.split(',');
+            let dataNumbers = [];
+            let hasError = false;
+
+            for (let i = 0; i < dataArrayStrings.length; i++) {
+                const numStr = dataArrayStrings[i].trim();
+                if (numStr === "") {
+                    if (!(i === dataArrayStrings.length - 1 || dataArrayStrings.slice(i+1).every(s => s.trim() === ""))) {
+                        // Fehler, wenn leere Einträge nicht nur am Ende sind
+                    }
+                    continue; 
+                }
+                const num = parseFloat(numStr.replace(',', '.')); 
+                if (isNaN(num)) {
+                    hasError = true;
+                    break;
+                }
+                dataNumbers.push(num);
+            }
+             dataNumbers = dataNumbers.filter(n => !isNaN(n)); 
+
+            if (hasError || dataNumbers.length === 0) {
+                errorDisplay.textContent = "Ungültige Eingabe. Bitte nur Zahlen, mit Komma getrennt (z.B. 10, 12.5, 15).";
+                errorDisplay.style.display = 'block';
+                resultsContainer.style.display = 'none';
+                return;
+            }
+
+            const sortedData = [...dataNumbers].sort((a, b) => a - b);
+            document.getElementById('sortedDataDisplay').textContent = sortedData.map(n => n.toLocaleString('de-DE')).join(', ');
+
+            const n = sortedData.length;
+            const formatConfig = { minimumFractionDigits: 2, maximumFractionDigits: 4 };
+
+            // Mittelwert
+            const sum = dataNumbers.reduce((acc, val) => acc + val, 0);
+            const mean = n > 0 ? sum / n : NaN;
+            document.getElementById('meanValue').textContent = isNaN(mean) ? "N/A" : mean.toLocaleString('de-DE', formatConfig);
+
+            // Median
+            let median;
+            if (n === 0) {
+                median = NaN;
+            } else {
+                const mid = Math.floor(n / 2);
+                if (n % 2 === 0) {
+                    median = (sortedData[mid - 1] + sortedData[mid]) / 2;
+                } else {
+                    median = sortedData[mid];
+                }
+            }
+            document.getElementById('medianValue').textContent = isNaN(median) ? "N/A" : median.toLocaleString('de-DE', formatConfig);
+
+            // Quartile (Q1, Q3)
+            let q1 = NaN;
+            let q3 = NaN;
+            if (n >= 1) { // Geändert von n > 0 zu n >=1, da getPercentile mit n=1 umgehen kann
+                           // Für sinnvolle Quartile sind aber mehr Datenpunkte besser
+                q1 = getPercentile(sortedData, 0.25);
+                q3 = getPercentile(sortedData, 0.75);
+            }
+            document.getElementById('q1Value').textContent = isNaN(q1) ? "N/A" : q1.toLocaleString('de-DE', formatConfig);
+            document.getElementById('q3Value').textContent = isNaN(q3) ? "N/A" : q3.toLocaleString('de-DE', formatConfig);
+            
+            // Interquartilsabstand (IQR)
+            let iqr = NaN;
+            if (!isNaN(q1) && !isNaN(q3)) {
+                iqr = q3 - q1;
+            }
+            document.getElementById('iqrValue').textContent = isNaN(iqr) ? "N/A" : iqr.toLocaleString('de-DE', formatConfig);
+
+            // Standardabweichung (Stichprobe)
+            let stdDev = NaN;
+            if (n > 1) { 
+                const variance = dataNumbers.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / (n - 1);
+                stdDev = Math.sqrt(variance);
+                document.getElementById('stdDevValue').textContent = stdDev.toLocaleString('de-DE', formatConfig);
+            } else {
+                 document.getElementById('stdDevValue').textContent = "N/A (mind. 2 Werte nötig)";
+            }
+
+            // Spanne
+            let range = NaN;
+            if (n > 0) {
+                range = sortedData[n - 1] - sortedData[0];
+            }
+            document.getElementById('rangeValue').textContent = isNaN(range) ? "N/A" : range.toLocaleString('de-DE', formatConfig);
+
+            resultsContainer.style.display = 'block';
+            
+            if (window.renderMathInElement) {
+                renderMathInElement(resultsContainer, { // Nur den Results-Container neu rendern
+                     delimiters: [ {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true} ]
+                });
+            }
+        }
+
+        document.getElementById('dataInput').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                calculateAllKennzahlen();
+            }
+        });
+    </script>
+
+</body>
+</html>

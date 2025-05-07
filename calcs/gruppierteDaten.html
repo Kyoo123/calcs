@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistiken & Diagramme für gruppierte Daten</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            margin: 20px;
+            background-color: #f0f2f5; /* Slightly different background */
+            color: #333;
+            line-height: 1.6;
+        }
+        .main-container {
+            background-color: #fff;
+            padding: 20px 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-width: 850px; 
+            margin: 20px auto;
+        }
+        h1, h2 {
+            color: #1a2533; /* Darker blue for headings */
+            text-align: center;
+        }
+        h1 {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+        }
+        h2 {
+            margin-top: 35px;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+            font-size: 1.5em;
+        }
+        .input-area, .stats-output-area, .charts-area {
+            margin-bottom: 25px;
+        }
+        .input-group-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            background-color: #fdfdfd;
+        }
+        .input-group-row label {
+            font-size: 0.95em;
+            margin-right: 8px;
+            white-space: nowrap;
+        }
+        .input-group-row input[type="text"],
+        .input-group-row input[type="number"] {
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.95em;
+            margin-right: 10px;
+        }
+        .input-group-row input.range-input {
+            flex-grow: 1;
+            min-width: 120px;
+        }
+        .input-group-row input.frequency-input {
+            width: 80px;
+        }
+        .delete-row-btn {
+            background: none;
+            border: none;
+            color: #dc3545;
+            font-size: 1.4em;
+            cursor: pointer;
+            padding: 5px;
+            line-height: 1;
+        }
+        .delete-row-btn:hover {
+            color: #a71d2a;
+        }
+        .action-buttons {
+            display: flex;
+            justify-content: space-between; 
+            margin-top: 15px;
+            gap: 10px; 
+        }
+        .action-buttons button {
+            padding: 10px 15px;
+            font-size: 1em;
+            border-radius: 5px;
+            cursor: pointer;
+            border: none;
+            flex-grow: 1; 
+        }
+        #addRowBtn {
+            background-color: #5cb85c;
+            color: white;
+        }
+        #addRowBtn:hover {
+            background-color: #4cae4c;
+        }
+        #calculateBtn {
+            background-color: #007bff;
+            color: white;
+        }
+        #calculateBtn:hover {
+            background-color: #0056b3;
+        }
+
+        .stats-output {
+            padding: 15px;
+            background-color: #e9f7fd; 
+            border-radius: 6px;
+            border: 1px solid #bce8f1;
+            margin-bottom: 15px; /* Space between stats blocks */
+        }
+        .stats-output h3 { font-size: 1.2em; margin-top: 0; margin-bottom: 10px; color: #0c5460; }
+        .stats-output p { margin: 8px 0; font-size: 1em; }
+        .stats-output span { font-weight: bold; color: #004085; }
+        .class-details-list {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .class-details-list li {
+            padding: 6px 0;
+            border-bottom: 1px dashed #d1e0e0;
+            font-size: 0.95em;
+        }
+        .class-details-list li:last-child {
+            border-bottom: none;
+        }
+        .class-details-list .label {
+            font-weight: bold;
+        }
+
+        .error {
+            color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb;
+            padding: 12px; border-radius: 5px; margin-bottom: 15px; font-size: 0.95em;
+        }
+        .chart-container {
+            width: 100%;
+            max-width: 750px;
+            height: 480px; 
+            margin: 25px auto;
+            border: 1px solid #d1d9e6; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+            border-radius: 6px;
+        }
+        .chart-placeholder-message {
+            text-align: center;
+            padding: 25px;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .input-group-row { flex-direction: column; align-items: stretch; }
+            .input-group-row input[type="text"],
+            .input-group-row input[type="number"] { width: 100%; margin-bottom: 8px; }
+            .delete-row-btn { align-self: flex-end; }
+            .action-buttons { flex-direction: column; }
+        }
+        @media (max-width: 600px) {
+            h1 { font-size: 1.6em; }
+            h2 { font-size: 1.3em; }
+            .chart-container { height: 400px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <h1>Statistiken & Diagramme für gruppierte Daten</h1>
+
+        <div class="input-area">
+            <h2>Dateneingabe (Gruppen/Klassen)</h2>
+            <div id="inputRowsContainer">
+                </div>
+            <div class="action-buttons">
+                <button id="addRowBtn" type="button">Weitere Gruppe hinzufügen (+)</button>
+                <button id="calculateBtn" type="button">Berechnen & Zeichnen</button>
+            </div>
+            <div id="errorDisplay" class="error" style="display:none;"></div>
+        </div>
+        
+        <div id="statsOutputArea" class="stats-output-area" style="display:none;">
+            <h2>Statistische Kennwerte (approximiert für gruppierte Daten)</h2>
+            <div class="stats-output">
+                <h3>Zusammenfassende Statistiken</h3>
+                <p>Gesamthäufigkeit (N): <span id="totalFrequency"></span></p>
+                <p>Geschätzter Mittelwert ($\mu$): <span id="meanVal"></span></p>
+                <p>Untere Grenze (Min): <span id="minVal"></span></p>
+                <p>Approximiertes 1. Quartil (Q1): <span id="q1Val"></span></p>
+                <p>Approximierter Median: <span id="medianVal"></span></p>
+                <p>Approximiertes 3. Quartil (Q3): <span id="q3Val"></span></p>
+                <p>Obere Grenze (Max): <span id="maxVal"></span></p>
+            </div>
+            <div class="stats-output">
+                <h3>Klassendetails</h3>
+                <ul id="classDetailsList" class="class-details-list">
+                    </ul>
+            </div>
+        </div>
+
+        <div id="chartsArea" class="charts-area" style="display:none;">
+            <h2>Grafische Darstellungen</h2>
+            <div id="boxplotChart" class="chart-container">
+                 <p class="chart-placeholder-message">Boxplot wird hier angezeigt.</p>
+            </div>
+            <div id="pieChart" class="chart-container">
+                 <p class="chart-placeholder-message">Kreisdiagramm wird hier angezeigt.</p>
+            </div>
+            <div id="barChart" class="chart-container">
+                 <p class="chart-placeholder-message">Säulendiagramm (Histogramm-artig) wird hier angezeigt.</p>
+            </div>
+            <div id="horizontalBarChart" class="chart-container">
+                 <p class="chart-placeholder-message">Balkendiagramm wird hier angezeigt.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const inputRowsContainer = document.getElementById('inputRowsContainer');
+        const addRowBtn = document.getElementById('addRowBtn');
+        const calculateBtn = document.getElementById('calculateBtn');
+        const errorDisplay = document.getElementById('errorDisplay');
+        const statsOutputArea = document.getElementById('statsOutputArea');
+        const chartsArea = document.getElementById('chartsArea');
+        const classDetailsList = document.getElementById('classDetailsList');
+        let rowCounter = 0;
+
+        // Function to create a new input row
+        function createInputRow() {
+            rowCounter++;
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'input-group-row';
+            rowDiv.id = `row-${rowCounter}`;
+            rowDiv.innerHTML = `
+                <button type="button" class="delete-row-btn" onclick="deleteRow('row-${rowCounter}')" title="Diese Gruppe entfernen">🗑️</button>
+                <label for="range-${rowCounter}">Klasse ${rowCounter} (z.B. 2000-2500):</label>
+                <input type="text" id="range-${rowCounter}" class="range-input" placeholder="Untergrenze-Obergrenze">
+                <label for="freq-${rowCounter}">Häufigkeit:</label>
+                <input type="number" id="freq-${rowCounter}" class="frequency-input" min="0" placeholder="Anzahl">
+            `;
+            inputRowsContainer.appendChild(rowDiv);
+        }
+
+        // Function to delete an input row
+        function deleteRow(rowId) {
+            const row = document.getElementById(rowId);
+            if (row) {
+                row.remove();
+            }
+        }
+
+        // Add initial rows
+        for (let i = 0; i < 3; i++) {
+            createInputRow();
+        }
+
+        addRowBtn.addEventListener('click', createInputRow);
+        calculateBtn.addEventListener('click', processDataAndDraw);
+
+        function processDataAndDraw() {
+            errorDisplay.textContent = '';
+            errorDisplay.style.display = 'none';
+            statsOutputArea.style.display = 'none';
+            chartsArea.style.display = 'none';
+            classDetailsList.innerHTML = ''; // Clear previous class details
+
+            // Clear previous charts
+            ['boxplotChart', 'pieChart', 'barChart', 'horizontalBarChart'].forEach(id => {
+                const chartDiv = document.getElementById(id);
+                if (chartDiv) {
+                    Plotly.purge(chartDiv);
+                    chartDiv.innerHTML = `<p class="chart-placeholder-message">${id.replace('Chart','')} wird hier angezeigt.</p>`;
+                }
+            });
+
+            const groups = [];
+            const inputRows = inputRowsContainer.getElementsByClassName('input-group-row');
+            let totalFrequency = 0;
+            let allMidpointsRepeated = []; 
+
+            for (let i = 0; i < inputRows.length; i++) {
+                const rangeInput = inputRows[i].querySelector('.range-input');
+                const freqInput = inputRows[i].querySelector('.frequency-input');
+
+                const rangeStr = rangeInput.value.trim();
+                const freqStr = freqInput.value.trim();
+
+                if (!rangeStr && !freqStr) continue; 
+
+                if (!rangeStr || !freqStr) {
+                    errorDisplay.textContent = `Fehler in Gruppe ${i + 1}: Bitte sowohl Bereich als auch Häufigkeit angeben.`;
+                    errorDisplay.style.display = 'block';
+                    return;
+                }
+
+                const rangeParts = rangeStr.replace(/\s+/g, '').split('-');
+                if (rangeParts.length !== 2) {
+                    errorDisplay.textContent = `Fehler in Gruppe ${i + 1}: Bereich "${rangeStr}" ungültig. Format: "Untergrenze-Obergrenze".`;
+                    errorDisplay.style.display = 'block';
+                    return;
+                }
+
+                const lower = parseFloat(rangeParts[0]);
+                const upper = parseFloat(rangeParts[1]);
+                const frequency = parseInt(freqStr, 10);
+
+                if (isNaN(lower) || isNaN(upper) || lower > upper) {
+                    errorDisplay.textContent = `Fehler in Gruppe ${i + 1}: Bereichswerte "${rangeStr}" ungültig oder untere > obere Grenze.`;
+                    errorDisplay.style.display = 'block';
+                    return;
+                }
+                if (isNaN(frequency) || frequency < 0) {
+                    errorDisplay.textContent = `Fehler in Gruppe ${i + 1}: Häufigkeit "${freqStr}" ungültig. Muss eine positive Zahl sein.`;
+                    errorDisplay.style.display = 'block';
+                    return;
+                }
+                if (frequency === 0) continue; 
+
+                const midpoint = (lower + upper) / 2;
+                groups.push({ lower, upper, midpoint, frequency, rangeLabel: `${lower}-${upper}` });
+                totalFrequency += frequency;
+
+                for (let j = 0; j < frequency; j++) {
+                    allMidpointsRepeated.push(midpoint);
+                }
+            }
+
+            if (groups.length === 0) {
+                errorDisplay.textContent = "Keine gültigen Daten eingegeben.";
+                errorDisplay.style.display = 'block';
+                return;
+            }
+
+            groups.sort((a, b) => a.lower - b.lower);
+
+            // Display Class Details
+            groups.forEach((group, index) => {
+                const listItem = document.createElement('li');
+                listItem.innerHTML = `
+                    <span class="label">Klasse ${index + 1}:</span> ${group.rangeLabel}, 
+                    <span class="label">Häufigkeit:</span> ${group.frequency.toLocaleString('de-DE')}, 
+                    <span class="label">Klassenmitte:</span> ${group.midpoint.toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 2})}
+                `;
+                classDetailsList.appendChild(listItem);
+            });
+
+
+            // --- Statistical Calculations for Grouped Data ---
+            let sumFxM = 0;
+            groups.forEach(g => sumFxM += g.frequency * g.midpoint);
+            const mean = totalFrequency > 0 ? sumFxM / totalFrequency : 0;
+
+            const minBound = groups[0].lower;
+            const maxBound = groups[groups.length - 1].upper;
+
+            let cumulativeFrequency = 0;
+            let median = NaN, q1 = NaN, q3 = NaN;
+
+            function getGroupedPercentile(percentileRank) {
+                if (totalFrequency === 0) return NaN;
+                const rankPosition = percentileRank * totalFrequency;
+                let cfBefore = 0;
+                for (const group of groups) {
+                    cumulativeFrequency = cfBefore + group.frequency;
+                    if (rankPosition <= cumulativeFrequency) {
+                        if (group.frequency === 0) return group.lower; 
+                        return group.lower + ((rankPosition - cfBefore) / group.frequency) * (group.upper - group.lower);
+                    }
+                    cfBefore = cumulativeFrequency;
+                }
+                return NaN; 
+            }
+            
+            median = getGroupedPercentile(0.5);
+            q1 = getGroupedPercentile(0.25);
+            q3 = getGroupedPercentile(0.75);
+            
+            document.getElementById('totalFrequency').textContent = totalFrequency.toLocaleString('de-DE');
+            document.getElementById('meanVal').textContent = mean.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('minVal').textContent = minBound.toLocaleString('de-DE');
+            document.getElementById('q1Val').textContent = isNaN(q1) ? 'N/A' : q1.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('medianVal').textContent = isNaN(median) ? 'N/A' : median.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('q3Val').textContent = isNaN(q3) ? 'N/A' : q3.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('maxVal').textContent = maxBound.toLocaleString('de-DE');
+            statsOutputArea.style.display = 'block';
+
+            const chartLabels = groups.map(g => g.rangeLabel);
+            const chartFrequencies = groups.map(g => g.frequency);
+
+            chartsArea.style.display = 'block';
+
+            // 1. Boxplot (horizontal)
+            if (allMidpointsRepeated.length > 0) {
+                // For horizontal boxplot, use 'x' instead of 'y'
+                const boxTrace = { 
+                    x: allMidpointsRepeated, // Data on x-axis
+                    type: 'box', 
+                    name: 'Daten (approximiert)', 
+                    boxpoints: 'all', 
+                    jitter: 0.3, 
+                    pointpos: -1.8,
+                    orientation: 'h' // Explicitly set orientation to horizontal
+                };
+                const boxLayout = { 
+                    title: 'Approximierter Boxplot (basierend auf Mittelpunkten)', 
+                    xaxis: { title: 'Werte' }, // X-axis now represents the values
+                    // yaxis: { title: '' } // Y-axis can be left blank or given a different meaning if needed
+                };
+                Plotly.newPlot('boxplotChart', [boxTrace], boxLayout, {responsive: true});
+            } else {
+                document.getElementById('boxplotChart').innerHTML = '<p class="chart-placeholder-message">Nicht genügend Daten für Boxplot.</p>';
+            }
+
+            const MAX_CATEGORIES_FOR_PIE_BAR = 20;
+
+            // 2. Pie Chart
+            if (chartLabels.length > 0 && chartLabels.length <= MAX_CATEGORIES_FOR_PIE_BAR) {
+                const pieTrace = { labels: chartLabels, values: chartFrequencies, type: 'pie', textinfo: "label+percent", insidetextorientation: "radial" };
+                const pieLayout = { title: 'Kreisdiagramm der Gruppenhäufigkeiten' };
+                Plotly.newPlot('pieChart', [pieTrace], pieLayout, {responsive: true});
+            } else {
+                document.getElementById('pieChart').innerHTML = `<p class="chart-placeholder-message">${chartLabels.length > 0 ? 'Zu viele Gruppen für übersichtliches Kreisdiagramm.' : 'Keine Daten für Kreisdiagramm.'}</p>`;
+            }
+
+            // 3. Bar Chart (Säulendiagramm)
+            if (chartLabels.length > 0 && chartLabels.length <= MAX_CATEGORIES_FOR_PIE_BAR) {
+                const barTrace = { x: chartLabels, y: chartFrequencies, type: 'bar', marker: {color: 'rgb(26, 118, 255)'} };
+                const barLayout = { title: 'Säulendiagramm der Gruppenhäufigkeiten', xaxis: { title: 'Gruppen/Klassen', type: 'category' }, yaxis: { title: 'Häufigkeit' } };
+                Plotly.newPlot('barChart', [barTrace], barLayout, {responsive: true});
+            } else {
+                document.getElementById('barChart').innerHTML = `<p class="chart-placeholder-message">${chartLabels.length > 0 ? 'Zu viele Gruppen für übersichtliches Säulendiagramm.' : 'Keine Daten für Säulendiagramm.'}</p>`;
+            }
+            
+            // 4. Horizontal Bar Chart (Balkendiagramm)
+            if (chartLabels.length > 0 && chartLabels.length <= MAX_CATEGORIES_FOR_PIE_BAR) {
+                const hBarTrace = { x: chartFrequencies, y: chartLabels, type: 'bar', orientation: 'h', marker: {color: 'rgb(55, 83, 109)'}};
+                const hBarLayout = { title: 'Balkendiagramm der Gruppenhäufigkeiten', xaxis: { title: 'Häufigkeit' }, yaxis: { title: 'Gruppen/Klassen', automargin: true, type: 'category' } };
+                Plotly.newPlot('horizontalBarChart', [hBarTrace], hBarLayout, {responsive: true});
+            } else {
+                 document.getElementById('horizontalBarChart').innerHTML = `<p class="chart-placeholder-message">${chartLabels.length > 0 ? 'Zu viele Gruppen für übersichtliches Balkendiagramm.' : 'Keine Daten für Balkendiagramm.'}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rohdaten Analyse & Gruppierung</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, { delimiters: [ {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true} ] });">
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/fraction.js@4.2.0/fraction.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 20px; background-color: #f4f7f9; color: #333; line-height: 1.6;
+        }
+        .container {
+            background-color: #fff; padding: 25px; border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08); max-width: 850px; margin: 20px auto;
+        }
+        h1 { color: #2c3e50; text-align: center; font-size: 2em; margin-bottom: 25px; }
+        h2 { color: #34495e; font-size: 1.6em; margin-top: 30px; margin-bottom:15px; border-bottom: 2px solid #bdc3c7; padding-bottom: 8px;}
+        h3 { color: #2980b9; font-size: 1.3em; margin-top: 20px; margin-bottom: 10px;}
+
+        .input-section, .results-section { margin-bottom: 30px; }
+        .input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;}
+        .input-grid label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.95em; color: #555; }
+        .input-grid input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 1em; box-sizing: border-box; }
+        
+        #analyzeButton {
+            display: block; width: 100%; padding: 12px; font-size: 1.1em;
+            background-color: #27ae60; color: white; border: none;
+            border-radius: 5px; cursor: pointer; transition: background-color 0.2s;
+        }
+        #analyzeButton:hover { background-color: #229954; }
+
+        .stats-block {
+            background-color: #ecf0f1; padding: 15px; border-radius: 6px; margin-bottom: 15px;
+            border: 1px solid #dde4e6;
+        }
+        .stats-block p { margin: 8px 0; font-size: 1em; }
+        .stats-block .label { font-weight: 600; color: #2c3e50; }
+        .stats-block .value { font-weight: bold; color: #2980b9; }
+        .stats-block .latex-value .katex { font-size: 1.1em !important; color: #16a085 !important; }
+        .stats-block .decimal-value { font-size: 0.95em; color: #7f8c8d; }
+
+        .formula-box {
+            margin-top: 10px; padding: 10px; background-color: #e9ecef;
+            border-radius: 4px; font-size: 0.9em;
+        }
+        .formula-box p { margin-bottom: 5px; }
+        .formula-box .explanation { font-style: italic; font-size: 0.9em; color: #6c757d; }
+        .katex-display { margin: 0.5em 0 !important; } /* Stellt sicher, dass Blockformeln zentriert sind */
+
+        table.class-table {
+            width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.95em;
+        }
+        table.class-table th, table.class-table td {
+            border: 1px solid #bdc3c7; padding: 10px; text-align: left;
+        }
+        table.class-table th { background-color: #3498db; color: white; font-weight: 600; }
+        table.class-table tbody tr:nth-child(even) { background-color: #f2f2f2; }
+
+        .chart-container {
+            width: 100%; max-width: 750px; height: 450px; margin: 25px auto;
+            border: 1px solid #d1d9e6; box-shadow: 0 2px 6px rgba(0,0,0,0.06); border-radius: 6px;
+        }
+        .error {
+            color: #c0392b; background-color: #fdd; border: 1px solid #fbb;
+            padding: 12px; border-radius: 5px; margin-bottom: 15px; font-size: 0.95em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Rohdaten Analyse & Gruppierung</h1>
+
+        <div class="input-section">
+            <h2>Dateneingabe</h2>
+            <div class="input-grid">
+                <div>
+                    <label for="rawDataInput">Rohdaten (Komma-getrennt):</label>
+                    <input type="text" id="rawDataInput" placeholder="z.B. 12, 18, 15, 10, 13">
+                </div>
+                <div>
+                    <label for="numClassesInput">Anzahl der Klassen:</label>
+                    <input type="number" id="numClassesInput" placeholder="z.B. 3" min="1">
+                </div>
+                <div>
+                    <label for="classWidthInput">Klassenbreite (optional):</label>
+                    <input type="number" id="classWidthInput" placeholder="z.B. 3" min="0.1" step="any">
+                </div>
+            </div>
+            <button id="analyzeButton">Analysieren & Gruppieren</button>
+            <div id="errorDisplay" class="error" style="display:none;"></div>
+        </div>
+
+        <div id="rawDataStatsOutput" class="results-section" style="display:none;">
+            <h2>Statistiken der Rohdaten</h2>
+            </div>
+
+        <div id="groupingOutput" class="results-section" style="display:none;">
+            <h2>Gruppierte Daten</h2>
+            <div class="stats-block">
+                <p><span class="label">Berechnete Klassenbreite:</span> <span class="value" id="calculatedClassWidth"></span></p>
+                <p><span class="label">"Spielraum" (Anpassung):</span> <span class="value" id="spielraumValue"></span></p>
+                <p><span class="label">Startwert der 1. Klasse:</span> <span class="value" id="firstClassStart"></span></p>
+            </div>
+            <table class="class-table">
+                <thead>
+                    <tr>
+                        <th>Klasse Nr.</th>
+                        <th>Grenzen</th>
+                        <th>Klassenmitte ($m_i$)</th>
+                        <th>Häufigkeit ($f_i$)</th>
+                        <th>Relative Häufigkeit</th>
+                        <th>Kumulierte Häufigkeit</th>
+                    </tr>
+                </thead>
+                <tbody id="classTableBody">
+                    </tbody>
+            </table>
+        </div>
+        
+        <div id="histogramChart" class="chart-container" style="display:none;">
+            </div>
+
+    </div>
+
+    <script>
+        // Globale KaTeX-Optionen für renderMathInElement
+        const katexOptions = {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false},
+                {left: '\\(', right: '\\)', display: false},
+                {left: '\\[', right: '\\]', display: true}
+            ],
+            throwOnError: false // Verhindert, dass KaTeX bei Fehlern abbricht
+        };
+
+        // Diese Funktion wird aufgerufen, nachdem dynamisch Inhalt mit LaTeX hinzugefügt wurde.
+        function renderDynamicKatexInElement(element) {
+            if (typeof renderMathInElement === 'function') {
+                console.log("KaTeX: Attempting to render dynamic content in element:", element);
+                renderMathInElement(element, katexOptions);
+            } else {
+                console.warn("KaTeX: renderMathInElement function not available for dynamic content.");
+            }
+        }
+        
+        document.addEventListener("DOMContentLoaded", function() {
+            console.log("DOM fully loaded. KaTeX auto-render should have run via script's onload attribute.");
+            if (typeof Fraction !== 'function') {
+                document.getElementById('errorDisplay').textContent = "Fehler: Fraction.js nicht geladen.";
+                document.getElementById('errorDisplay').style.display = 'block';
+                console.error("Fraction.js library NOT loaded!");
+            } else {
+                console.log("Fraction.js library loaded successfully.");
+            }
+            // Der `onload` im auto-render script tag kümmert sich um das initiale Rendern.
+        });
+
+        const rawDataInput = document.getElementById('rawDataInput');
+        const numClassesInput = document.getElementById('numClassesInput');
+        const classWidthInput = document.getElementById('classWidthInput');
+        const analyzeButton = document.getElementById('analyzeButton');
+        const errorDisplay = document.getElementById('errorDisplay');
+        const rawDataStatsOutput = document.getElementById('rawDataStatsOutput');
+        const groupingOutput = document.getElementById('groupingOutput');
+        const classTableBody = document.getElementById('classTableBody');
+        const histogramChartDiv = document.getElementById('histogramChart');
+
+        function formatFractionToLatex(frac) {
+            if (!frac || typeof frac.n === 'undefined') return "N/A";
+            if (frac.d === 1) return frac.n.toString();
+            return (frac.s === -1 ? "-" : "") + `\\frac{${Math.abs(frac.n)}}{${Math.abs(frac.d)}}`;
+        }
+
+        function getPercentile(sortedArr, p) {
+            if (!sortedArr || sortedArr.length === 0) return NaN;
+            if (sortedArr.length === 1) return sortedArr[0];
+            const index = p * (sortedArr.length - 1); 
+            const lower = Math.floor(index);
+            const upper = Math.ceil(index);
+            const weight = index - lower;
+            if (lower === upper) return sortedArr[lower];
+            return sortedArr[lower] * (1 - weight) + sortedArr[upper] * weight;
+        }
+        
+        function createStatBlock(title, valueLatex, valueDecimal, formulaLatex, formulaExplanation = "") {
+            const block = document.createElement('div');
+            block.className = 'stats-block';
+            let html = `<h3>${title}</h3>`;
+            html += `<p><span class="label">Wert: </span>`;
+            if (valueLatex && valueLatex !== "N/A") { // Nur rendern, wenn es gültiger LaTeX-String ist
+                html += `<span class="latex-value">$$${valueLatex}$$</span> `;
+            } else if (valueLatex === "N/A" && !valueDecimal) { // Wenn nur N/A als Bruch, dann als Text
+                 html += `<span class="value">${valueLatex}</span> `;
+            }
+
+            if (valueDecimal) {
+                 html += `<span class="decimal-value"> ${valueLatex && valueLatex !== "N/A" ? '≈' : ''} ${valueDecimal}</span>`;
+            } else if (!valueLatex && valueDecimal === "N/A") { // Wenn kein Bruch und Dezimal N/A
+                html += `<span class="value">${valueDecimal}</span>`;
+            }
+
+            html += `</p>`;
+            if (formulaLatex) {
+                html += `<div class="formula-box"><p>Formel:</p>$$${formulaLatex}$$`;
+                if (formulaExplanation) {
+                    html += `<p class="explanation">${formulaExplanation}</p>`;
+                }
+                html += `</div>`;
+            }
+            block.innerHTML = html;
+            return block;
+        }
+
+        analyzeButton.addEventListener('click', function() {
+            errorDisplay.textContent = '';
+            errorDisplay.style.display = 'none';
+            rawDataStatsOutput.innerHTML = ''; 
+            rawDataStatsOutput.style.display = 'none';
+            groupingOutput.style.display = 'none';
+            classTableBody.innerHTML = ''; 
+            Plotly.purge(histogramChartDiv); 
+            histogramChartDiv.style.display = 'none';
+
+            if (typeof Fraction !== 'function') {
+                 errorDisplay.textContent = "Fehler: Bruchrechnungs-Bibliothek ist nicht verfügbar.";
+                 errorDisplay.style.display = 'block'; return;
+            }
+
+            const rawDataStr = rawDataInput.value.trim();
+            if (!rawDataStr) {
+                errorDisplay.textContent = "Bitte Rohdaten eingeben.";
+                errorDisplay.style.display = 'block'; return;
+            }
+            const rawDataArrayStr = rawDataStr.split(',');
+            const rawData = rawDataArrayStr.map(s => parseFloat(s.trim().replace(',', '.'))).filter(n => !isNaN(n));
+
+            if (rawData.length === 0) {
+                errorDisplay.textContent = "Keine gültigen Zahlen in den Rohdaten gefunden.";
+                errorDisplay.style.display = 'block'; return;
+            }
+            rawData.sort((a, b) => a - b);
+            const N_raw = rawData.length;
+
+            const rawMin = rawData[0];
+            const rawMax = rawData[N_raw - 1];
+            const rawRange = rawMax - rawMin;
+
+            let rawSum = new Fraction(0);
+            rawData.forEach(val => rawSum = rawSum.add(new Fraction(val)));
+            const rawMean_frac = N_raw > 0 ? rawSum.div(new Fraction(N_raw)) : new Fraction(0);
+            const rawMean_dec = rawMean_frac.valueOf();
+
+            let rawSumSqDiff = new Fraction(0);
+            rawData.forEach(val => {
+                const diff = (new Fraction(val)).sub(rawMean_frac);
+                rawSumSqDiff = rawSumSqDiff.add(diff.pow(2));
+            });
+            const rawVariance_frac = N_raw > 0 ? rawSumSqDiff.div(new Fraction(N_raw)) : new Fraction(0);
+            const rawVariance_dec = rawVariance_frac.valueOf();
+            const rawStdDev_dec = N_raw > 0 && rawVariance_dec >= 0 ? Math.sqrt(rawVariance_dec) : NaN;
+
+            const rawMedian = getPercentile(rawData, 0.5);
+            const rawQ1 = getPercentile(rawData, 0.25);
+            const rawQ3 = getPercentile(rawData, 0.75);
+            const rawIQR = (!isNaN(rawQ1) && !isNaN(rawQ3)) ? rawQ3 - rawQ1 : NaN;
+
+            rawDataStatsOutput.style.display = 'block';
+            rawDataStatsOutput.appendChild(createStatBlock("Anzahl (N)", N_raw.toString(), null, "N"));
+            rawDataStatsOutput.appendChild(createStatBlock("Mittelwert (Rohdaten, $\\mu$)", formatFractionToLatex(rawMean_frac), rawMean_dec.toLocaleString('de-DE', {maximumFractionDigits:3}), "\\mu = \\frac{x_1 + x_2 + \\ldots + x_N}{N}")); // Geändert zu x_1 + ...
+            rawDataStatsOutput.appendChild(createStatBlock("Varianz (Rohdaten, $\\sigma^2$)", formatFractionToLatex(rawVariance_frac), rawVariance_dec.toLocaleString('de-DE', {maximumFractionDigits:3}), "\\sigma^2 = \\frac{(x_1 - \\mu)^2 + \\ldots + (x_N - \\mu)^2}{N}")); // Geändert zu x_1 + ...
+            rawDataStatsOutput.appendChild(createStatBlock("Standardabweichung (Rohdaten, $\\sigma$)", null, isNaN(rawStdDev_dec) ? "N/A" : rawStdDev_dec.toLocaleString('de-DE', {maximumFractionDigits:3}), "\\sigma = \\sqrt{\\sigma^2}"));
+            rawDataStatsOutput.appendChild(createStatBlock("Median (Rohdaten)", null, isNaN(rawMedian) ? "N/A" : rawMedian.toLocaleString('de-DE', {maximumFractionDigits:2}), "Zentralwert der sortierten Daten"));
+            rawDataStatsOutput.appendChild(createStatBlock("1. Quartil (Q1, Rohdaten)", null, isNaN(rawQ1) ? "N/A" : rawQ1.toLocaleString('de-DE', {maximumFractionDigits:2}), "Median der unteren Hälfte"));
+            rawDataStatsOutput.appendChild(createStatBlock("3. Quartil (Q3, Rohdaten)", null, isNaN(rawQ3) ? "N/A" : rawQ3.toLocaleString('de-DE', {maximumFractionDigits:2}), "Median der oberen Hälfte"));
+            rawDataStatsOutput.appendChild(createStatBlock("Interquartilsabstand (IQR, Rohdaten)", null, isNaN(rawIQR) ? "N/A" : rawIQR.toLocaleString('de-DE', {maximumFractionDigits:2}), "IQR = Q_3 - Q_1"));
+            rawDataStatsOutput.appendChild(createStatBlock("Minimum (Rohdaten)", rawMin.toLocaleString('de-DE'), null, "x_{\\text{min}}"));
+            rawDataStatsOutput.appendChild(createStatBlock("Maximum (Rohdaten)", rawMax.toLocaleString('de-DE'), null, "x_{\\text{max}}"));
+            rawDataStatsOutput.appendChild(createStatBlock("Spanne (Rohdaten)", rawRange.toLocaleString('de-DE'), null, "\\text{Spanne} = x_{\\text{max}} - x_{\\text{min}}"));
+            
+            renderDynamicKatexInElement(rawDataStatsOutput); // KaTeX für diesen Block rendern
+
+            const numClasses = parseInt(numClassesInput.value);
+            let classWidth = parseFloat(classWidthInput.value.replace(',', '.'));
+
+            if (isNaN(numClasses) || numClasses < 1) {
+                errorDisplay.textContent = "Bitte eine gültige Anzahl an Klassen angeben für die Gruppierung.";
+                errorDisplay.style.display = 'block'; 
+                // Nicht returnen, Rohdaten-Stats bleiben sichtbar
+                return; 
+            }
+            if (isNaN(classWidth) || classWidth <= 0) {
+                classWidth = parseFloat(prompt("Für die Gruppierung wird eine Klassenbreite benötigt. Bitte geben Sie die gewünschte Klassenbreite ein (z.B. 3 für das Pizza-Beispiel):", Math.ceil(rawRange / numClasses).toString() ));
+                if (isNaN(classWidth) || classWidth <=0) {
+                     errorDisplay.textContent = "Ungültige Klassenbreite für Gruppierung. Gruppierung wird übersprungen.";
+                     errorDisplay.style.display = 'block'; 
+                     // Nicht returnen, Rohdaten-Stats bleiben sichtbar
+                     return;
+                }
+            }
+            
+            const totalClassSpan = numClasses * classWidth;
+            const spielraum = totalClassSpan - rawRange;
+            const firstClassStartVal = rawMin - (spielraum / 2);
+
+            document.getElementById('calculatedClassWidth').textContent = classWidth.toLocaleString('de-DE');
+            document.getElementById('spielraumValue').textContent = spielraum.toLocaleString('de-DE', {maximumFractionDigits: 2});
+            document.getElementById('firstClassStart').textContent = firstClassStartVal.toLocaleString('de-DE', {maximumFractionDigits: 2});
+
+            const classes = [];
+            let currentLowerBound = firstClassStartVal;
+            let cumulativeFreq = 0;
+
+            for (let i = 0; i < numClasses; i++) {
+                const currentUpperBound = currentLowerBound + classWidth;
+                let frequency = 0;
+                rawData.forEach(val => {
+                    // Korrektur der Zuweisungslogik für die letzte Klasse, um Rundungsfehler bei Grenzen zu berücksichtigen
+                    const isLastClass = (i === numClasses - 1);
+                    // Ein Wert gehört zur Klasse, wenn er >= untere Grenze UND < obere Grenze ist
+                    // ODER wenn es die letzte Klasse ist UND der Wert <= obere Grenze ist (um den Maximalwert einzuschließen)
+                    if (val >= currentLowerBound && (val < currentUpperBound || (isLastClass && val <= currentUpperBound + 1e-9))) { // +1e-9 für kleine Toleranz
+                        frequency++;
+                    }
+                });
+                
+                cumulativeFreq += frequency;
+                const midpoint = (currentLowerBound + currentUpperBound) / 2;
+                classes.push({
+                    nr: i + 1,
+                    lower: currentLowerBound,
+                    upper: currentUpperBound,
+                    midpoint: midpoint,
+                    frequency: frequency,
+                    relativeFrequency: N_raw > 0 ? frequency / N_raw : 0, // N_raw verwenden
+                    cumulativeFrequency: cumulativeFreq,
+                    rangeLabel: `${currentLowerBound.toLocaleString('de-DE', {minimumFractionDigits:2, maximumFractionDigits:2})} - ${currentUpperBound.toLocaleString('de-DE', {minimumFractionDigits:2, maximumFractionDigits:2})}`
+                });
+                currentLowerBound = currentUpperBound;
+            }
+
+            classes.forEach(c => {
+                const row = classTableBody.insertRow();
+                row.insertCell().textContent = c.nr;
+                row.insertCell().textContent = c.rangeLabel;
+                row.insertCell().textContent = c.midpoint.toLocaleString('de-DE', {minimumFractionDigits:2, maximumFractionDigits:2});
+                row.insertCell().textContent = c.frequency.toLocaleString('de-DE');
+                row.insertCell().textContent = (c.relativeFrequency * 100).toLocaleString('de-DE', {minimumFractionDigits:1, maximumFractionDigits:1}) + "%";
+                row.insertCell().textContent = c.cumulativeFrequency.toLocaleString('de-DE');
+            });
+            groupingOutput.style.display = 'block';
+            renderDynamicKatexInElement(groupingOutput); // KaTeX für diesen Block rendern (falls Formeln in Tabellenüberschriften etc.)
+
+
+            const histLabels = classes.map(c => c.rangeLabel);
+            const histFrequencies = classes.map(c => c.frequency);
+
+            if (histLabels.length > 0 && histFrequencies.some(f => f > 0)) { // Nur zeichnen, wenn es Frequenzen gibt
+                const histTrace = {
+                    x: histLabels,
+                    y: histFrequencies,
+                    type: 'bar',
+                    marker: { color: '#27ae60' }
+                };
+                const histLayout = {
+                    title: 'Histogramm der gruppierten Daten',
+                    xaxis: { title: 'Klassen', type: 'category' },
+                    yaxis: { title: 'Häufigkeit' },
+                    bargap: 0.05 
+                };
+                Plotly.newPlot(histogramChartDiv, [histTrace], histLayout, {responsive: true});
+                histogramChartDiv.style.display = 'block';
+            } else {
+                histogramChartDiv.innerHTML = '<p style="text-align:center; padding:20px;">Keine Daten für Histogramm nach Gruppierung.</p>';
+                histogramChartDiv.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
