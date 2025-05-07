@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spannweite & IQR Rechner</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+        onload="renderMathInElement(document.body, { delimiters: [ {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true} ] });">
+    </script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f7f9;
+            color: #333;
+            line-height: 1.6;
+            display: flex;
+            justify-content: center;
+            padding-top: 30px;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            font-size: 1.8em;
+            margin-bottom: 25px;
+        }
+        .input-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Flexible grid */
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 0.95em;
+            color: #555;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
+            box-sizing: border-box;
+        }
+        #calculateButton {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            font-size: 1.1em;
+            background-color: #3498db; /* Blauer Button */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 10px;
+        }
+        #calculateButton:hover {
+            background-color: #2980b9;
+        }
+        .results-area {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .result-item {
+            background-color: #ecf0f1;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border: 1px solid #dde4e6;
+        }
+        .result-item h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+            color: #2c3e50;
+        }
+        .result-item p {
+            margin: 5px 0;
+            font-size: 1.1em;
+        }
+        .result-item .value {
+            font-weight: bold;
+            color: #27ae60; /* Grüner Wert */
+        }
+        .formula-box {
+            margin-top: 8px;
+            padding: 8px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            font-size: 0.95em;
+        }
+        .formula-box .katex-display { margin: 0.3em 0 !important; }
+        .error {
+            color: #c0392b;
+            background-color: #fdd;
+            border: 1px solid #fbb;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 15px;
+            font-size: 0.95em;
+            text-align: center;
+        }
+         @media (max-width: 480px) {
+             .input-grid { grid-template-columns: 1fr; } /* Single column on small screens */
+         }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Spannweite & IQR aus Boxplot-Kennzahlen</h1>
+
+        <div class="input-grid">
+            <div class="input-group">
+                <label for="minInput">Minimum (Min):</label>
+                <input type="number" id="minInput" step="any" placeholder="z.B. 10">
+            </div>
+			<div class="input-group">
+                <label for="maxInput">Maximum (Max):</label>
+                <input type="number" id="maxInput" step="any" placeholder="z.B. 22">
+            </div>
+			<div class="input-group">
+                <label for="medianInput">Median:</label>
+                <input type="number" id="medianInput" step="any" placeholder="z.B. 15">
+            </div>
+            <div class="input-group">
+                <label for="q1Input">1. Quartil (Q1):</label>
+                <input type="number" id="q1Input" step="any" placeholder="z.B. 12.5">
+            </div>
+            <div class="input-group">
+                <label for="q3Input">3. Quartil (Q3):</label>
+                <input type="number" id="q3Input" step="any" placeholder="z.B. 18">
+            </div>
+        </div>
+
+        <button id="calculateButton">Berechnen</button>
+        <div id="errorDisplay" class="error" style="display:none;"></div>
+
+        <div id="resultsArea" class="results-area" style="display:none;">
+            <div class="result-item">
+                <h3>Spannweite</h3>
+                <p>Wert: <span class="value" id="rangeValue"></span></p>
+                <div class="formula-box">
+                    Formel: $$ \text{Spanne} = \text{Max} - \text{Min} $$
+                </div>
+            </div>
+            <div class="result-item">
+                <h3>Interquartilsabstand (IQR)</h3>
+                <p>Wert: <span class="value" id="iqrValue"></span></p>
+                <div class="formula-box">
+                    Formel: $$ \text{IQR} = Q_3 - Q_1 $$
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const minInput = document.getElementById('minInput');
+        const q1Input = document.getElementById('q1Input');
+        const medianInput = document.getElementById('medianInput');
+        const q3Input = document.getElementById('q3Input');
+        const maxInput = document.getElementById('maxInput');
+        const calculateButton = document.getElementById('calculateButton');
+        const errorDisplay = document.getElementById('errorDisplay');
+        const resultsArea = document.getElementById('resultsArea');
+        const rangeValueSpan = document.getElementById('rangeValue');
+        const iqrValueSpan = document.getElementById('iqrValue');
+
+        calculateButton.addEventListener('click', () => {
+            // Reset previous results and errors
+            errorDisplay.textContent = '';
+            errorDisplay.style.display = 'none';
+            resultsArea.style.display = 'none';
+            rangeValueSpan.textContent = '';
+            iqrValueSpan.textContent = '';
+
+            // Get input values as numbers
+            const min = parseFloat(minInput.value);
+            const q1 = parseFloat(q1Input.value);
+            const median = parseFloat(medianInput.value);
+            const q3 = parseFloat(q3Input.value);
+            const max = parseFloat(maxInput.value);
+
+            // Validate inputs
+            let errorMessage = '';
+            if (isNaN(min) || isNaN(q1) || isNaN(median) || isNaN(q3) || isNaN(max)) {
+                errorMessage = 'Bitte alle Felder mit gültigen Zahlen ausfüllen.';
+            } else if (!(min <= q1 && q1 <= median && median <= q3 && q3 <= max)) {
+                errorMessage = 'Logischer Fehler: Die Reihenfolge Min ≤ Q1 ≤ Median ≤ Q3 ≤ Max muss eingehalten werden.';
+            }
+
+            if (errorMessage) {
+                errorDisplay.textContent = errorMessage;
+                errorDisplay.style.display = 'block';
+                return; // Stop calculation
+            }
+
+            // Calculate Spanne and IQR
+            const range = max - min;
+            const iqr = q3 - q1;
+
+            // Display results
+            const formatOptions = { minimumFractionDigits: 0, maximumFractionDigits: 4 }; // Adjust as needed
+            rangeValueSpan.textContent = range.toLocaleString('de-DE', formatOptions);
+            iqrValueSpan.textContent = iqr.toLocaleString('de-DE', formatOptions);
+            resultsArea.style.display = 'block';
+
+            // Re-render KaTeX for the formulas if they were hidden
+            if (typeof renderMathInElement === 'function') {
+                renderMathInElement(resultsArea, {
+                     delimiters: [ {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true} ],
+                     throwOnError: false
+                });
+            }
+        });
+
+        // Optional: Add event listeners to input fields to recalculate on Enter press
+        [minInput, q1Input, medianInput, q3Input, maxInput].forEach(input => {
+            input.addEventListener('keypress', function(event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault(); // Prevent potential form submission
+                    calculateButton.click(); // Trigger calculation
+                }
+            });
+        });
+    </script>
+</body>
+</html>
